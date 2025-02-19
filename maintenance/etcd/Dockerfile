@@ -1,4 +1,4 @@
-FROM registry.redhat.io/openshift4/ose-etcd-rhel9:v4.13.0
+FROM registry.redhat.io/openshift4/ose-etcd-rhel9:v4.17.0
 
 ADD defrag.sh /opt/
 
