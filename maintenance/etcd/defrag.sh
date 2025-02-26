@@ -14,7 +14,7 @@ reclaim_space_in_megabytes=$(( ${reclaim_space} / 1024 / 1024 ))
 if (( reclaim_space_in_megabytes >= 1024 )); then
     rev=$(ETCDCTL_ENDPOINTS="${first_endpoint}" etcdctl endpoint status --write-out="json" | egrep -o '"revision":[0-9]*' | egrep -o '[0-9]*')
     etcdctl compact $rev
-    etcdctl defrag
+    etcdctl defrag --command-timeout 30s
 else
     echo "We can not reclaim more than 1024 megabytes. No Compaction and Defragmentation needed"
 fi
