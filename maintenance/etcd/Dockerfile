@@ -1,4 +1,4 @@
-FROM registry.redhat.io/ubi9:9.6-1747219013 AS build
+FROM registry.redhat.io/ubi9:9.7-1762180182 AS build
 
 WORKDIR /root
 
@@ -10,7 +10,7 @@ RUN git clone -b v3.5.18 https://github.com/etcd-io/etcd.git && \
     cp -rf /root/etcd/bin/etcdctl /usr/bin/etcdctl
     
 # Second stage: Create the final image
-FROM registry.redhat.io/ubi9:9.6-1747219013
+FROM registry.redhat.io/ubi9:9.7-1762180182
 ADD defrag.sh /opt/
 
 RUN dnf -y install jq && dnf clean all
