@@ -9,6 +9,9 @@ COPY build-deps/go.mod build-deps/go.sum ./
 # Download dependencies
 RUN go mod download
 
+# Copy source
+COPY . .
+
 # Build etcdctl
 RUN go build -o etcdctl go.etcd.io/etcd/etcdctl/v3
 
