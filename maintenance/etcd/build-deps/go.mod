@@ -2,7 +2,7 @@ module github.com/redhat-appstudio/infrastructure/build-deps
 
 go 1.22
 
-toolchain go1.22.11
+toolchain go1.26.1
 
 require go.etcd.io/etcd/etcdctl/v3 v3.5.18
 
@@ -66,4 +66,3 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 )
-
