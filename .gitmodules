@@ -1,0 +1,3 @@
+[submodule "maintenance/etcd/etcd-defrag"]
+	path = maintenance/etcd/etcd-defrag
+	url = git@github.com:glevi-rh/etcd-defrag.git

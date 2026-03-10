@@ -1,25 +1,17 @@
-# First stage: Build etcdctl
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS build
+FROM registry.access.redhat.com/ubi9/go-toolset:1.24 AS build
 
 WORKDIR /build
 
-# Copy the Go Modules manifests
-COPY build-deps/go.mod build-deps/go.sum ./
+COPY etcd-defrag/ ./
 
-# Download dependencies
-RUN go mod download
+RUN go build -o etcd-defrag .
 
-# Build etcdctl
-RUN go build -o etcdctl go.etcd.io/etcd/etcdctl/v3
+FROM registry.redhat.io/ubi9/ubi-minimal:9.7
 
-# Second stage: Create the final image
-FROM registry.redhat.io/ubi9:9.7-1762180182
+COPY --from=build /build/etcd-defrag /usr/local/bin/etcd-defrag
 
 ADD defrag.sh /opt/
 
-RUN dnf -y install jq && dnf clean all
+USER 1001
 
-# Copy etcdctl from builder
-COPY --from=build /build/etcdctl /usr/bin/etcdctl
-
-CMD [ "/bin/sh" ]
+CMD ["/bin/sh", "/opt/defrag.sh"]

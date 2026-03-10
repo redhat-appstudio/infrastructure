@@ -33,7 +33,7 @@ spec:
   - name: hermetic
     value: "true"
   - name: prefetch-input
-    value: '[{"type": "rpm", "path": "maintenance/etcd/build-deps"}, {"type": "gomod", "path": "maintenance/etcd/build-deps"}]'
+    value: '[{"type": "gomod", "path": "maintenance/etcd/etcd-defrag"}]'
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while maintaining trust after pipeline customization.
