@@ -1,8 +1,6 @@
 module github.com/redhat-appstudio/infrastructure/build-deps
 
-go 1.22
-
-toolchain go1.22.11
+go 1.23
 
 require go.etcd.io/etcd/etcdctl/v3 v3.5.18
 
@@ -11,7 +9,7 @@ require (
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
-	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
+	github.com/coreos/go-systemd/v22 v22.7.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
