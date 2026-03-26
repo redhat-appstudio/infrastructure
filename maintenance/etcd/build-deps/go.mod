@@ -35,7 +35,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/cobra v1.1.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/urfave/cli v1.22.4 // indirect
+	github.com/urfave/cli v1.22.17 // indirect
 	github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.18 // indirect
