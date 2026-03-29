@@ -1,8 +1,6 @@
 module github.com/redhat-appstudio/infrastructure/build-deps
 
-go 1.22.0
-
-toolchain go1.22.11
+go 1.25.0
 
 require go.etcd.io/etcd/etcdctl/v3 v3.5.18
 
@@ -58,7 +56,7 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
+	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
