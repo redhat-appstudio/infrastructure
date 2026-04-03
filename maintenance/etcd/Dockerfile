@@ -1,5 +1,5 @@
 # First stage: Build etcdctl
-FROM registry.access.redhat.com/ubi9/go-toolset:1.22 AS build
+FROM registry.access.redhat.com/ubi9/go-toolset:1.25.8-1775151107 AS build
 
 WORKDIR /build
 
