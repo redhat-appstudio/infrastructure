@@ -45,7 +45,7 @@ require (
 	go.etcd.io/etcd/etcdutl/v3 v3.5.18 // indirect
 	go.etcd.io/etcd/pkg/v3 v3.5.18 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.18 // indirect
-	go.etcd.io/etcd/server/v3 v3.5.18 // indirect
+	go.etcd.io/etcd/server/v3 v3.6.10 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0 // indirect
 	go.opentelemetry.io/otel v1.39.0 // indirect
