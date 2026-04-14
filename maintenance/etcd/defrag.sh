@@ -2,8 +2,10 @@
 
 set -x
 
-maxFragmentedPercentage=${maxFragmentedPercentage:-50}
-minDefragMB=${minDefragMB:-120}
+diskUsageThreshold=${diskUsageThreshold:-60}
+fragmentationThreshold=${fragmentationThreshold:-30}
+reclaimSpaceThreshold=${reclaimSpaceThreshold:-1024}
+
 first_endpoint=$(echo $ETCDCTL_ENDPOINTS | cut -d',' -f1)
 
 echo $first_endpoint
@@ -22,7 +24,16 @@ echo "Fragmented Percentage: ${fragmentedPercentage}%"
 fragmentedSpace=$(( ${diff} / 1024 / 1024 ))
 echo "Fragmented Space: ${fragmentedSpace} MB"
 
-if [ "$fragmentedPercentage" -ge "$maxFragmentedPercentage" ] && [ "$fragmentedSpace" -ge "$minDefragMB" ]; then
+diskUsage=$((${ondisk} * 100 / (8 * 1024 * 1024 * 1024)))
+echo "Disk Usage: ${diskUsage}"
+
+# Perform defragmentation if needed
+if [ "$diskUsage" -lt "$diskUsageThreshold" ]; then
+    echo "Disk usage is below threshold, no defragmentation needed."
+    exit 0
+fi
+
+if [ "$fragmentedPercentage" -ge "$fragmentationThreshold" ] || [ "$fragmentedSpace" -ge "$reclaimSpaceThreshold" ]; then
     echo "Fragmentation is above threshold, performing defragmentation..."
     etcdctl defrag --command-timeout 60s
 else
