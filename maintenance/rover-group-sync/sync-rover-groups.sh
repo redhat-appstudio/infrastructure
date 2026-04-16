@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# Inject credentials into LDAP config, sync LDAP groups via oc adm groups sync,
+# write one portable Group manifest per file, commit + push.
+#
+# Intended for use in a Kubernetes CronJob; requires oc, yq (mikefarah v4), git.
+
+set -euo pipefail
+
+# Environment overrides (useful for tests): OC, YQ, GIT, SED, FIND, DATE_CMD,
+OC="${OC:-oc}"
+YQ="${YQ:-yq}"
+GIT="${GIT:-git}"
+SED="${SED:-sed}"
+FIND="${FIND:-find}"
+DATE_CMD="${DATE_CMD:-date}"
+
+SYNC_CONFIG_SOURCE="${SYNC_CONFIG_SOURCE:-/config/ldap-sync-config.yaml}"
+LDAP_CA_PATH="${LDAP_CA_PATH:-/secrets/ca.crt}"
+GIT_PRIVATE_SSH_PATH="${GIT_PRIVATE_SSH_PATH:-/secrets/git-ssh/ssh_private}"
+BRANCH="${GIT_BRANCH:-main}"
+# Optional: export KUBECONFIG only if your oc build requires an apiserver even for LDAP-only sync.
+# [[ -n "${KUBECONFIG:-}" ]] || export KUBECONFIG=/var/run/kubeconfig/kubeconfig
+
+# Check for requirements
+if ! command -v "${OC}" >/dev/null || ! command -v "${YQ}" >/dev/null || ! command -v "${GIT}" >/dev/null; then
+    echo "missing oc, yq, or git in PATH" >&2
+    exit 1
+fi
+
+# Check environment variable values
+if [[ ! -f "${SYNC_CONFIG_SOURCE}" ]]; then
+    echo "missing LDAP sync config template: ${SYNC_CONFIG_SOURCE}" >&2
+    exit 1
+fi
+if [[ ! -f "${LDAP_CA_PATH}" ]]; then
+    echo "missing LDAP CA file: ${LDAP_CA_PATH}" >&2
+    exit 1
+fi
+if [[ ! -f "${GIT_PRIVATE_SSH_PATH}" ]]; then
+    echo "missing Git repo SSH private key: ${GIT_PRIVATE_SSH_PATH}" >&2
+    exit 1
+fi
+
+for _required in GIT_REPO_URL LDAP_DN LDAP_PASSWORD GIT_SSH_PUBLIC_KEY; do
+    if [[ -z "${!_required:-}" ]]; then
+        echo "${_required} must be set to a non-empty string" >&2
+        exit 1
+    fi
+done
+
+# Inject credentials into LDAP config writable copy; ConfigMap mount is read-only
+SYNC_CONFIG_FILE="$(mktemp)"
+trap 'rm -f "${SYNC_CONFIG_FILE}"' EXIT
+cp "${SYNC_CONFIG_SOURCE}" "${SYNC_CONFIG_FILE}"
+
+export LDAP_PASSWORD LDAP_DN LDAP_CA_PATH
+"${YQ}" -i '.bindPassword = strenv(LDAP_PASSWORD)' "${SYNC_CONFIG_FILE}"
+"${YQ}" -i '.bindDN = strenv(LDAP_DN)' "${SYNC_CONFIG_FILE}"
+"${YQ}" -i '.ca = strenv(LDAP_CA_PATH)' "${SYNC_CONFIG_FILE}"
+
+# Clone branch into work directory (tests may set WORKDIR to a fixed path)
+WORKDIR="${WORKDIR:-$(mktemp -d)}"
+rm -rf "${WORKDIR}"
+mkdir -p "${WORKDIR}"
+
+KNOWN_HOSTS_PATH="$(mktemp)"
+trap 'rm -f "${SYNC_CONFIG_FILE}" "${KNOWN_HOSTS_PATH}"' EXIT
+printf 'github.com %s\n' "$(awk 'NF {print $1, $2; exit}' <<< "${GIT_SSH_PUBLIC_KEY}")" >"${KNOWN_HOSTS_PATH}"
+
+
+if [[ -z "${GIT_SSH_COMMAND:-}" ]]; then
+    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") -o UserKnownHostsFile=$(printf '%q' "${KNOWN_HOSTS_PATH}") -o StrictHostKeyChecking=yes"
+fi
+
+"${GIT}" clone --depth 1 --branch "${BRANCH}" "${GIT_REPO_URL}" "${WORKDIR}"
+cd "${WORKDIR}"
+
+# Get all Group objects - portable only (no annotations/labels/cluster metadata)
+LIST_TMP="$(mktemp)"
+trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}" "${KNOWN_HOSTS_PATH}"' EXIT
+
+echo "Retrieving groups from LDAP..."
+"${OC}" adm groups sync --sync-config="${SYNC_CONFIG_FILE}" -o yaml | "${YQ}" \
+    '.items |= map({"apiVersion": .apiVersion, "kind": .kind, "metadata": {"name": .metadata.name}, "users": (.users // [])})' \
+    >"${LIST_TMP}"
+
+COUNT="$("${YQ}" '.items | length' "${LIST_TMP}")"
+
+# Create Group manifests in target directory (and sanitize the group name)
+echo "Creating Group manifests in target directory..."
+TARGET_DIR="${WORKDIR}/groups"
+mkdir -p "${TARGET_DIR}"
+"${FIND}" "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
+
+i=0
+while [[ "${i}" -lt "${COUNT}" ]]; do
+    name="$("${YQ}" ".items[${i}].metadata.name" "${LIST_TMP}")"
+    safe="$(printf '%s' "${name}" | "${SED}" 's/[^a-zA-Z0-9._-]/_/g')"
+    "${YQ}" ".items[${i}]" "${LIST_TMP}" -o yaml >"${TARGET_DIR}/${safe}.yaml"
+    i=$((i + 1))
+done
+
+# Commit to Git repo if the groups were updated
+"${GIT}" add "groups"
+if "${GIT}" diff --cached --quiet; then
+    echo "No group manifest changes; skipping commit."
+    exit 0
+fi
+
+"${GIT}" -c user.email="${GIT_AUTHOR_EMAIL:-group-sync@local}" -c user.name="${GIT_AUTHOR_NAME:-group-sync-bot}" \
+    commit -m "chore(groups): sync rover LDAP groups ${BRANCH} $("${DATE_CMD}" -u +%Y-%m-%dT%H:%M:%SZ)"
+
+"${GIT}" push "${GIT_REPO_URL}" "${BRANCH}"

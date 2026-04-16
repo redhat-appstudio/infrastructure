@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Test double for `oc adm groups sync -o yaml`. Set CASE:
+#   single          — one Group (test-group)
+#   multi           — multiple Groups rover-alpha, rover-bravo
+#   sanitize        — one Group with a name to be sanitized (konflux:weird/name
+#   sync-fail       — sync exits 1 (LDAP/API error)
+#   malformed-yaml  — stdout is not valid YAML (breaks the yq pipe)
+
+if [[ "${1:-}" != "adm" || "${2:-}" != "groups" || "${3:-}" != "sync" ]]; then
+  echo "stub oc: unsupported invocation: $*" >&2
+  exit 99
+fi
+
+case "${CASE:-}" in
+  single)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: test-group
+    users:
+      - user1
+EOF
+    exit 0
+    ;;
+  multi)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: rover-alpha
+    users: []
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: rover-bravo
+    users:
+      - user-one
+EOF
+    exit 0
+    ;;
+  sanitize)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: konflux:weird/name
+    users:
+      - sync-test-user
+EOF
+    exit 0
+    ;;
+  sync-fail)
+    echo "oc: simulated adm groups sync failure" >&2
+    exit 1
+    ;;
+  malformed-yaml)
+    printf '%s\n' 'INVALID_YAML: [unclosed'
+    exit 0
+    ;;
+  *)
+    echo "stub oc: set CASE to single, multi, sanitize, sync-fail, or malformed-yaml" >&2
+    exit 99
+    ;;
+esac

@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Delegates to real sed except the group filename sanitization used in sync-rover-groups.sh.
+REAL_SED="$(command -v sed)"
+[[ -n "${REAL_SED}" ]] || { echo "stub sed: real sed not on PATH" >&2; exit 99; }
+
+if [[ "${1:-}" == 's/[^a-zA-Z0-9._-]/_/g' ]]; then
+  echo "sed: simulated filename sanitize failure" >&2
+  exit 1
+fi
+exec "${REAL_SED}" "$@"

@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Wraps real git and only fails based on the REASON environment variable.
+#   clone  — first arg is "clone"
+#   commit — argv contains the subcommand "commit"
+#   push   — argv contains the subcommand "push"
+REAL_GIT="$(command -v git)"
+[[ -n "${REAL_GIT}" ]] || { echo "stub git: real git not on PATH" >&2; exit 99; }
+
+case "${REASON:-}" in
+  clone)
+    if [[ "${1:-}" == "clone" ]]; then
+      echo "git: simulated clone failure" >&2
+      exit 1
+    fi
+    ;;
+  commit)
+    for _arg in "$@"; do
+      if [[ "${_arg}" == "commit" ]]; then
+        echo "git: simulated commit failure" >&2
+        exit 1
+      fi
+    done
+    ;;
+  push)
+    for _arg in "$@"; do
+      if [[ "${_arg}" == "push" ]]; then
+        echo "git: simulated push failure" >&2
+        exit 1
+      fi
+    done
+    ;;
+  *)
+    echo "stub git: set REASON to clone, commit, or push" >&2
+    exit 99
+    ;;
+esac
+exec "${REAL_GIT}" "$@"

@@ -1,0 +1,29 @@
+# Minimal LDAPSyncConfig for tests and local runs (same schema as production template).
+kind: LDAPSyncConfig
+apiVersion: v1
+url: ldaps://ldap.example.test
+bindDN: "REPLACE_WITH_BIND_DN"
+bindPassword: "REPLACE_WITH_BIND_PASSWORD"
+insecure: false
+ca: "REPLACE_WITH_CA_PATH"
+
+rfc2307:
+  groupsQuery:
+    baseDN: "ou=test,dc=example,dc=test"
+    derefAliases: never
+    scope: sub
+    filter: "(objectClass=groupOfNames)"
+  groupUIDAttribute: dn
+  groupNameAttributes:
+    - cn
+  groupMembershipAttributes:
+    - uniqueMember
+  usersQuery:
+    baseDN: "dc=example,dc=test"
+    derefAliases: never
+    scope: sub
+  userNameAttributes:
+    - uid
+  userUIDAttribute: dn
+  tolerateMemberNotFoundErrors: true
+  tolerateMemberOutOfScopeErrors: true
