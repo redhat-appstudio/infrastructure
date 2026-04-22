@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Wraps real yq and only fails based on the REASON environment variable.
+#   password           — LDAP template inject @ .bindPassword cannot find that path
+#   dn                 — LDAP template inject @ .bindDN cannot find that path
+#   ca                 — LDAP template inject @ .ca cannot find that path
+#   metadata-name      — loop read .items[i].metadata.name cannot find that path
+REAL_YQ="$(command -v yq)"
+[[ -n "${REAL_YQ}" ]] || { echo "stub yq: real yq not on PATH" >&2; exit 99; }
+
+case "${REASON:-}" in
+  password)
+    if [[ "$*" == *bindPassword* ]]; then
+      echo "yq: cannot find .bindPassword" >&2
+      exit 1
+    fi
+    ;;
+  dn)
+    if [[ "$*" == *bindDN* ]]; then
+      echo "yq: cannot find .bindDN" >&2
+      exit 1
+    fi
+    ;;
+  ca)
+    if [[ "$*" == *".ca = strenv"* ]]; then
+      echo "yq: cannot find .ca" >&2
+      exit 1
+    fi
+    ;;
+  metadata-name)
+    if [[ "${1:-}" =~ ^\.items\[[0-9]+\]\.metadata\.name$ ]]; then
+      echo "yq: cannot find .items[i].metadata.name" >&2
+      exit 1
+    fi
+    ;;
+  *)
+    echo "stub yq: set REASON to password, dn, ca, or metadata-name" >&2
+    exit 99
+    ;;
+esac
+exec "${REAL_YQ}" "$@"

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Delegates to real find(1) except the rover-group-sync cleanup of groups/*.yaml.
+REAL_FIND="$(command -v find)"
+[[ -n "${REAL_FIND}" ]] || { echo "stub find: real find not on PATH" >&2; exit 99; }
+
+target="${1:-}"
+if [[ "$(basename -- "${target}")" == "groups" ]] && [[ "$*" == *"-name"* ]] && [[ "$*" == *"-delete"* ]]; then
+  echo "find: simulated failure deleting existing group yaml files" >&2
+  exit 1
+fi
+exec "${REAL_FIND}" "$@"
