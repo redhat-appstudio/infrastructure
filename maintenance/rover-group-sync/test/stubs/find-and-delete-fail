@@ -4,7 +4,8 @@ REAL_FIND="$(command -v find)"
 [[ -n "${REAL_FIND}" ]] || { echo "stub find: real find not on PATH" >&2; exit 99; }
 
 target="${1:-}"
-if [[ "$(basename -- "${target}")" == "groups" ]] && [[ "$*" == *"-name"* ]] && [[ "$*" == *"-delete"* ]]; then
+# Script runs find on groups/<ENVIRONMENT>/ (e.g. groups/staging), not groups/ itself.
+if [[ "$(basename -- "$(dirname -- "${target}")")" == "groups" ]] && [[ "$*" == *"-name"* ]] && [[ "$*" == *"-delete"* ]]; then
   echo "find: simulated failure deleting existing group yaml files" >&2
   exit 1
 fi

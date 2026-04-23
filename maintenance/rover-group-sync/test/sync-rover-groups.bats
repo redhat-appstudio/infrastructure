@@ -20,6 +20,7 @@ setup() {
   export LDAP_PASSWORD="test-password"
   export WORKDIR="${test_root}/workdir"
   export GIT_BRANCH="${GIT_BRANCH:-main}"
+  export ENVIRONMENT="${ENVIRONMENT:-staging}"
   SCRIPT="${BATS_TEST_DIRNAME}/../sync-rover-groups.sh"
   unset REASON
   unset CASE
@@ -122,6 +123,15 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 1 ]]
   [[ "${output}" == *"GIT_SSH_PUBLIC_KEY must be set"* ]]
+}
+
+@test "fails when ENVIRONMENT is neither 'production' nor 'staging'" {
+  stub_binaries
+  export GIT_REPO_URL="https://example.invalid/repo.git"
+  export ENVIRONMENT="not-an-environment"
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"ENVIRONMENT must be either staging or production"* ]]
 }
 
 # --- missing files ---
@@ -385,8 +395,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/test-group.yaml"
+  [[ -f "${WORKDIR}/groups/staging/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/groups/staging/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
@@ -409,18 +419,75 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/rover-alpha.yaml" ]]
-  [[ -f "${WORKDIR}/groups/rover-bravo.yaml" ]]
+  [[ -f "${WORKDIR}/groups/staging/rover-alpha.yaml" ]]
+  [[ -f "${WORKDIR}/groups/staging/rover-bravo.yaml" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/groups/rover-alpha.yaml"
+  run yq '.metadata.name' "${WORKDIR}/groups/staging/rover-alpha.yaml"
   [[ "${output}" == "rover-alpha" ]]
-  run yq '.users | length' "${WORKDIR}/groups/rover-alpha.yaml"
+  run yq '.users | length' "${WORKDIR}/groups/staging/rover-alpha.yaml"
   [[ "${output}" == "0" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/groups/rover-bravo.yaml"
+  run yq '.metadata.name' "${WORKDIR}/groups/staging/rover-bravo.yaml"
   [[ "${output}" == "rover-bravo" ]]
-  run yq '.users[0]' "${WORKDIR}/groups/rover-bravo.yaml"
+  run yq '.users[0]' "${WORKDIR}/groups/staging/rover-bravo.yaml"
   [[ "${output}" == "user-one" ]]
+}
+
+@test "syncs groups, writes manifests, commits and pushes when GIT_BRANCH is set" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+
+  export CASE=single
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export GIT_SSH_COMMAND="true"
+  export GIT_BRANCH="my-branch"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  local tmp_branch
+  tmp_branch="$(mktemp -d)"
+  git clone -q "file://${bare}" "${tmp_branch}"
+  git -C "${tmp_branch}" checkout -b my-branch
+  git -C "${tmp_branch}" push -q origin my-branch
+
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 0 ]]
+
+  [[ -f "${WORKDIR}/groups/staging/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/groups/staging/test-group.yaml"
+  [[ "${output}" == "test-group" ]]
+
+  run git -C "${bare}" log --oneline -1 my-branch
+  [[ "${output}" == *"chore(groups): sync rover LDAP groups my-branch"* ]]
+}
+
+@test "syncs groups, writes manifests, commits and pushes when ENVIRONMENT is set" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+
+  export CASE=single
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export GIT_SSH_COMMAND="true"
+  export ENVIRONMENT="production"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 0 ]]
+
+  [[ -f "${WORKDIR}/groups/production/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/groups/production/test-group.yaml"
+  [[ "${output}" == "test-group" ]]
+
+  run git -C "${bare}" log --oneline -1
+  [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
 }
 
 @test "syncs groups, sanitizes metadata.name into a safe filename (sed), writes manifests, commits and pushes with one group" {
@@ -440,8 +507,8 @@ stub_binaries() {
   [[ "${status}" -eq 0 ]]
 
   # konflux:weird/name -> colon and slash become underscores (see sync-rover-groups.sh sed)
-  [[ -f "${WORKDIR}/groups/konflux_weird_name.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/konflux_weird_name.yaml"
+  [[ -f "${WORKDIR}/groups/staging/konflux_weird_name.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/groups/staging/konflux_weird_name.yaml"
   [[ "${output}" == "konflux:weird/name" ]]
 }
 

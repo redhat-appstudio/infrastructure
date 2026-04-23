@@ -1,4 +1,4 @@
-# rover-group-sync
+# Rover Group Sync
 
 ## `sync-rover-groups.sh`
 
@@ -7,8 +7,8 @@ Bash script intended to run in a Kubernetes CronJob (see `Dockerfile`) It:
 1. **Validates** that `oc`, `yq` (mikefarah v4), and `git` are available, and that required paths and environment variables are present.
 2. **Prepares LDAP sync config** by copying the LDAP sync template and injecting `LDAP_PASSWORD`, `LDAP_DN`, and the CA path with `yq` in-place edits.
 3. **Clones** the target Git repository (branch from `GIT_BRANCH`, default `main`) into a work directory.
-4. **Syncs OpenShift Groups from LDAP** with `oc adm groups sync`, normalizes the `List` output with `yq`, and writes **one YAML file per group** under `groups/`, using a filename derived from `metadata.name` (non-alphanumeric characters sanitized with `sed`).
-5. **Commits and pushes** only if `groups/` changed; otherwise exits successfully without a commit.
+4. **Syncs OpenShift Groups from LDAP** with `oc adm groups sync`, normalizes the `List` output with `yq`, and writes **one YAML file per group** under `groups/<ENVIRONMENT>/`, using a filename derived from `metadata.name` (non-alphanumeric characters sanitized with `sed`).
+5. **Commits and pushes** only if `groups/<ENVIEONMENT>` changed; otherwise exits successfully without a commit.
 
 Typical inputs are mounted files (`SYNC_CONFIG_SOURCE`, `LDAP_CA_PATH`, `GIT_REPO_SSH_PATH`) and secrets (`GIT_REPO_URL`, `LDAP_DN`, `LDAP_PASSWORD`, `GIT_PUBLIC_SSH_KEY`). For Git over SSH, the script sets **`StrictHostKeyChecking=yes`** and writes a **temporary `known_hosts`** file whose line is `github.com` plus the key type and base64 key read from **`GIT_SSH_PUBLIC_KEY`**. Do not disable host key verification in production.
 
