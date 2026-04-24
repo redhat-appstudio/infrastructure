@@ -17,8 +17,9 @@ DATE_CMD="${DATE_CMD:-date}"
 
 SYNC_CONFIG_SOURCE="${SYNC_CONFIG_SOURCE:-/config/ldap-sync-config.yaml}"
 LDAP_CA_PATH="${LDAP_CA_PATH:-/secrets/ca.crt}"
-GIT_PRIVATE_SSH_PATH="${GIT_PRIVATE_SSH_PATH:-/secrets/git-ssh/ssh_private}"
+GIT_PRIVATE_SSH_PATH="${GIT_PRIVATE_SSH_PATH:-/secrets/git-repo/ssh_private}"
 BRANCH="${GIT_BRANCH:-main}"
+ENVIRONMENT="${ENVIRONMENT:-staging}"
 # Optional: export KUBECONFIG only if your oc build requires an apiserver even for LDAP-only sync.
 # [[ -n "${KUBECONFIG:-}" ]] || export KUBECONFIG=/var/run/kubeconfig/kubeconfig
 
@@ -48,6 +49,11 @@ for _required in GIT_REPO_URL LDAP_DN LDAP_PASSWORD GIT_SSH_PUBLIC_KEY; do
         exit 1
     fi
 done
+
+if [[ "${ENVIRONMENT}" != "staging" && "${ENVIRONMENT}" != "production" ]]; then
+    echo "ENVIRONMENT must be either staging or production" >&2
+    exit 1
+fi
 
 # Inject credentials into LDAP config writable copy; ConfigMap mount is read-only
 SYNC_CONFIG_FILE="$(mktemp)"
@@ -88,8 +94,8 @@ echo "Retrieving groups from LDAP..."
 COUNT="$("${YQ}" '.items | length' "${LIST_TMP}")"
 
 # Create Group manifests in target directory (and sanitize the group name)
-echo "Creating Group manifests in target directory..."
-TARGET_DIR="${WORKDIR}/groups"
+echo "Creating Group manifests in target ${ENVIRONMENT} directory..."
+TARGET_DIR="${WORKDIR}/groups/${ENVIRONMENT}"
 mkdir -p "${TARGET_DIR}"
 "${FIND}" "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
 
