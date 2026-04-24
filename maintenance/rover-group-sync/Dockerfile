@@ -10,11 +10,13 @@ RUN curl -fsSL -o /tmp/yq "https://github.com/mikefarah/yq/releases/download/${Y
     && mv /tmp/yq /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq
 
+# Install git
+RUN yum install -y git && yum clean all
+
 # Copy the sync script
 WORKDIR /scripts
 
 COPY sync-rover-groups.sh /scripts/sync-rover-groups.sh
-
 RUN chmod +x /scripts/sync-rover-groups.sh
 
 # Run the sync script

@@ -23,9 +23,19 @@ ENVIRONMENT="${ENVIRONMENT:-staging}"
 # Optional: export KUBECONFIG only if your oc build requires an apiserver even for LDAP-only sync.
 # [[ -n "${KUBECONFIG:-}" ]] || export KUBECONFIG=/var/run/kubeconfig/kubeconfig
 
-# Check for requirements
-if ! command -v "${OC}" >/dev/null || ! command -v "${YQ}" >/dev/null || ! command -v "${GIT}" >/dev/null; then
-    echo "missing oc, yq, or git in PATH" >&2
+# Check for package requirements
+if ! command -v "${OC}" >/dev/null; then
+    echo "missing oc in PATH" >&2
+    exit 1
+fi
+
+if ! command -v "${YQ}" >/dev/null; then
+    echo "missing yq in PATH" >&2
+    exit 1
+fi
+
+if ! command -v "${GIT}" >/dev/null; then
+    echo "missing git in PATH" >&2
     exit 1
 fi
 

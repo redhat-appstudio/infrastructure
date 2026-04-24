@@ -40,7 +40,7 @@ stub_binaries() {
   export GIT_REPO_URL="https://example.invalid/repo.git"
   run bash "${SCRIPT}"
   [[ "${status}" -eq 1 ]]
-  [[ "${output}" == *"missing oc, yq, or git"* ]]
+  [[ "${output}" == *"missing yq"* ]]
 }
 
 @test "fails when git is not installed (GIT points to missing file)" {
@@ -49,7 +49,7 @@ stub_binaries() {
   export GIT_REPO_URL="https://example.invalid/repo.git"
   run bash "${SCRIPT}"
   [[ "${status}" -eq 1 ]]
-  [[ "${output}" == *"missing oc, yq, or git"* ]]
+  [[ "${output}" == *"missing git"* ]]
 }
 
 @test "fails when oc is not installed (OC points to missing file)" {
@@ -58,7 +58,7 @@ stub_binaries() {
   export GIT_REPO_URL="https://example.invalid/repo.git"
   run bash "${SCRIPT}"
   [[ "${status}" -eq 1 ]]
-  [[ "${output}" == *"missing oc, yq, or git"* ]]
+  [[ "${output}" == *"missing oc"* ]]
 }
 
 # --- empty environment variables ---
