@@ -116,15 +116,6 @@ stub_binaries() {
   [[ "${output}" == *"LDAP_PASSWORD must be set"* ]]
 }
 
-@test "fails when GIT_SSH_PUBLIC_KEY is empty" {
-  stub_binaries
-  export GIT_SSH_PUBLIC_KEY=""
-  export GIT_REPO_URL="https://example.invalid/repo.git"
-  run bash "${SCRIPT}"
-  [[ "${status}" -eq 1 ]]
-  [[ "${output}" == *"GIT_SSH_PUBLIC_KEY must be set"* ]]
-}
-
 @test "fails when ENVIRONMENT is neither 'production' nor 'staging'" {
   stub_binaries
   export GIT_REPO_URL="https://example.invalid/repo.git"

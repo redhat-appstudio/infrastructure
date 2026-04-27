@@ -24,6 +24,7 @@ ENVIRONMENT="${ENVIRONMENT:-staging}"
 # [[ -n "${KUBECONFIG:-}" ]] || export KUBECONFIG=/var/run/kubeconfig/kubeconfig
 
 # Check for package requirements
+echo "Checking for package requirements..."
 if ! command -v "${OC}" >/dev/null; then
     echo "missing oc in PATH" >&2
     exit 1
@@ -40,6 +41,7 @@ if ! command -v "${GIT}" >/dev/null; then
 fi
 
 # Check environment variable values
+echo "Validating environment variables..."
 if [[ ! -f "${SYNC_CONFIG_SOURCE}" ]]; then
     echo "missing LDAP sync config template: ${SYNC_CONFIG_SOURCE}" >&2
     exit 1
@@ -53,7 +55,7 @@ if [[ ! -f "${GIT_PRIVATE_SSH_PATH}" ]]; then
     exit 1
 fi
 
-for _required in GIT_REPO_URL LDAP_DN LDAP_PASSWORD GIT_SSH_PUBLIC_KEY; do
+for _required in GIT_REPO_URL LDAP_DN LDAP_PASSWORD; do
     if [[ -z "${!_required:-}" ]]; then
         echo "${_required} must be set to a non-empty string" >&2
         exit 1
@@ -66,6 +68,7 @@ if [[ "${ENVIRONMENT}" != "staging" && "${ENVIRONMENT}" != "production" ]]; then
 fi
 
 # Inject credentials into LDAP config writable copy; ConfigMap mount is read-only
+echo "Injecting credentials into LDAP config..."
 SYNC_CONFIG_FILE="$(mktemp)"
 trap 'rm -f "${SYNC_CONFIG_FILE}"' EXIT
 cp "${SYNC_CONFIG_SOURCE}" "${SYNC_CONFIG_FILE}"
@@ -76,17 +79,13 @@ export LDAP_PASSWORD LDAP_DN LDAP_CA_PATH
 "${YQ}" -i '.ca = strenv(LDAP_CA_PATH)' "${SYNC_CONFIG_FILE}"
 
 # Clone branch into work directory (tests may set WORKDIR to a fixed path)
-WORKDIR="${WORKDIR:-$(mktemp -d)}"
+echo "Creating work directory..."
+WORKDIR="${WORKDIR:-$(mktemp -d --suffix=-workdir)}"
 rm -rf "${WORKDIR}"
 mkdir -p "${WORKDIR}"
 
-KNOWN_HOSTS_PATH="$(mktemp)"
-trap 'rm -f "${SYNC_CONFIG_FILE}" "${KNOWN_HOSTS_PATH}"' EXIT
-printf 'github.com %s\n' "$(awk 'NF {print $1, $2; exit}' <<< "${GIT_SSH_PUBLIC_KEY}")" >"${KNOWN_HOSTS_PATH}"
-
-
 if [[ -z "${GIT_SSH_COMMAND:-}" ]]; then
-    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") -o UserKnownHostsFile=$(printf '%q' "${KNOWN_HOSTS_PATH}") -o StrictHostKeyChecking=yes"
+    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") -o StrictHostKeyChecking=accept-new"
 fi
 
 "${GIT}" clone --depth 1 --branch "${BRANCH}" "${GIT_REPO_URL}" "${WORKDIR}"
@@ -94,7 +93,7 @@ cd "${WORKDIR}"
 
 # Get all Group objects - portable only (no annotations/labels/cluster metadata)
 LIST_TMP="$(mktemp)"
-trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}" "${KNOWN_HOSTS_PATH}"' EXIT
+trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}"' EXIT
 
 echo "Retrieving groups from LDAP..."
 "${OC}" adm groups sync --sync-config="${SYNC_CONFIG_FILE}" -o yaml | "${YQ}" \
