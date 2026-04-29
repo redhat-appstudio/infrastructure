@@ -84,8 +84,19 @@ WORKDIR="${WORKDIR:-$(mktemp -d --suffix=-workdir)}"
 rm -rf "${WORKDIR}"
 mkdir -p "${WORKDIR}"
 
+# SSH defaults to ~/.ssh/known_hosts when adding hosts (StrictHostKeyChecking=accept-new).
+# Force an explicit known_hosts file under a temporary home directory since HOME will be unset and thus
+# ~/.ssh will not be writable.
+HOME="$(mktemp -d --suffix=-home)"
+trap 'rm -rf "${HOME}"' EXIT
+SSH_KNOWN_HOSTS="$(mktemp -p "${HOME}" rover-sync-known_hosts.XXXXXX)"
+chmod 600 "${SSH_KNOWN_HOSTS}"
+trap 'rm -f "${SYNC_CONFIG_FILE}" "${SSH_KNOWN_HOSTS}"' EXIT
+
 if [[ -z "${GIT_SSH_COMMAND:-}" ]]; then
-    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") -o StrictHostKeyChecking=accept-new"
+    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") \
+-o StrictHostKeyChecking=accept-new \
+-o UserKnownHostsFile=$(printf '%q' "${SSH_KNOWN_HOSTS}")"
 fi
 
 "${GIT}" clone --depth 1 --branch "${BRANCH}" "${GIT_REPO_URL}" "${WORKDIR}"
@@ -93,7 +104,7 @@ cd "${WORKDIR}"
 
 # Get all Group objects - portable only (no annotations/labels/cluster metadata)
 LIST_TMP="$(mktemp)"
-trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}"' EXIT
+trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}" "${SSH_KNOWN_HOSTS}"' EXIT
 
 echo "Retrieving groups from LDAP..."
 "${OC}" adm groups sync --sync-config="${SYNC_CONFIG_FILE}" -o yaml | "${YQ}" \
