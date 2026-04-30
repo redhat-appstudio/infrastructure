@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# Delegates to real find(1) except the rover-group-sync cleanup of groups/*.yaml.
+# Delegates to real find(1) except the rover-group-sync cleanup of *.yaml under
+# components/rover-group-sync/<ENVIRONMENT>/groups/.
 REAL_FIND="$(command -v find)"
 [[ -n "${REAL_FIND}" ]] || { echo "stub find: real find not on PATH" >&2; exit 99; }
 
 target="${1:-}"
-# Script runs find on groups/<ENVIRONMENT>/ (e.g. groups/staging), not groups/ itself.
-if [[ "$(basename -- "$(dirname -- "${target}")")" == "groups" ]] && [[ "$*" == *"-name"* ]] && [[ "$*" == *"-delete"* ]]; then
+# Strip trailing slash so basename is stable.
+normalized="${target%/}"
+# Script runs: find "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
+# TARGET_DIR is .../components/rover-group-sync/<staging|production>/groups
+if [[ "$(basename -- "${normalized}")" == "groups" ]] &&
+  [[ "${normalized}" == *"/components/rover-group-sync/"* ]] &&
+  [[ "$*" == *"-name"* ]] &&
+  [[ "$*" == *"-delete"* ]]; then
   echo "find: simulated failure deleting existing group yaml files" >&2
   exit 1
 fi
