@@ -276,7 +276,7 @@ stub_binaries() {
 
 # --- existing group files deletion failure
 
-@test "fails when deleting existing group yaml files under groups/ fails" {
+@test "fails when deleting existing group yaml files under groups directory fails" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
   [[ -n "$(command -v find)" ]] || skip "find not installed"
@@ -386,8 +386,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/staging/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/staging/test-group.yaml"
+  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
@@ -410,17 +410,17 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/staging/rover-alpha.yaml" ]]
-  [[ -f "${WORKDIR}/groups/staging/rover-bravo.yaml" ]]
+  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml" ]]
+  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/groups/staging/rover-alpha.yaml"
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml"
   [[ "${output}" == "rover-alpha" ]]
-  run yq '.users | length' "${WORKDIR}/groups/staging/rover-alpha.yaml"
+  run yq '.users | length' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml"
   [[ "${output}" == "0" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/groups/staging/rover-bravo.yaml"
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml"
   [[ "${output}" == "rover-bravo" ]]
-  run yq '.users[0]' "${WORKDIR}/groups/staging/rover-bravo.yaml"
+  run yq '.users[0]' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml"
   [[ "${output}" == "user-one" ]]
 }
 
@@ -447,8 +447,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/staging/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/staging/test-group.yaml"
+  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1 my-branch
@@ -473,8 +473,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/groups/production/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/production/test-group.yaml"
+  [[ -f "${WORKDIR}/components/rover-group-sync/production/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/production/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
@@ -498,8 +498,8 @@ stub_binaries() {
   [[ "${status}" -eq 0 ]]
 
   # konflux:weird/name -> colon and slash become underscores (see sync-rover-groups.sh sed)
-  [[ -f "${WORKDIR}/groups/staging/konflux_weird_name.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/groups/staging/konflux_weird_name.yaml"
+  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/konflux_weird_name.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/konflux_weird_name.yaml"
   [[ "${output}" == "konflux:weird/name" ]]
 }
 

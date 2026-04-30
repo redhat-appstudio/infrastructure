@@ -114,8 +114,8 @@ echo "Retrieving groups from LDAP..."
 COUNT="$("${YQ}" '.items | length' "${LIST_TMP}")"
 
 # Create Group manifests in target directory (and sanitize the group name)
-echo "Creating Group manifests in target ${ENVIRONMENT} directory..."
-TARGET_DIR="${WORKDIR}/groups/${ENVIRONMENT}"
+echo "Creating Group manifests in target ${ENVIRONMENT} groups directory..."
+TARGET_DIR="${WORKDIR}/components/rover-group-sync/${ENVIRONMENT}/groups/"
 mkdir -p "${TARGET_DIR}"
 "${FIND}" "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
 
@@ -127,8 +127,8 @@ while [[ "${i}" -lt "${COUNT}" ]]; do
     i=$((i + 1))
 done
 
-# Commit to Git repo if the groups were updated
-"${GIT}" add "groups"
+# Commit to Git repo if the groups were updated (must match TARGET_DIR tree)
+"${GIT}" add "${TARGET_DIR}"
 if "${GIT}" diff --cached --quiet; then
     echo "No group manifest changes; skipping commit."
     exit 0
