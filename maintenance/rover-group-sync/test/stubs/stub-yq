@@ -3,7 +3,7 @@
 #   password           — LDAP template inject @ .bindPassword cannot find that path
 #   dn                 — LDAP template inject @ .bindDN cannot find that path
 #   ca                 — LDAP template inject @ .ca cannot find that path
-#   metadata-name      — loop read .items[i].metadata.name cannot find that path
+#   metadata-name           — loop read .items[i].metadata.name cannot find that path
 REAL_YQ="$(command -v yq)"
 [[ -n "${REAL_YQ}" ]] || { echo "stub yq: real yq not on PATH" >&2; exit 99; }
 
