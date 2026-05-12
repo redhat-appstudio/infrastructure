@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Wraps real kustomize; set REASON to force a failure (tests only).
+#   init — "kustomize init" exits 1
+#   edit — "kustomize edit add resource …" exits 1
+REAL_KUSTOMIZE="$(command -v kustomize)"
+[[ -n "${REAL_KUSTOMIZE}" ]] || {
+  echo "stub kustomize: real kustomize not on PATH" >&2
+  exit 99
+}
+
+case "${REASON:-}" in
+  init)
+    if [[ "${1:-}" == "init" ]]; then
+      echo "kustomize: simulated init failure" >&2
+      exit 1
+    fi
+    ;;
+  edit)
+    if [[ "${1:-}" == "edit" && "${2:-}" == "add" && "${3:-}" == "resource" ]]; then
+      echo "kustomize: simulated edit add resource failure" >&2
+      exit 1
+    fi
+    ;;
+esac
+exec "${REAL_KUSTOMIZE}" "$@"

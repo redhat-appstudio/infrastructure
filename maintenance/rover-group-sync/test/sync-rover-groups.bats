@@ -1,6 +1,7 @@
 #!/usr/bin/env bats
 #
-# Requires: bats, yq (mikefarah v4), git — for tests that exercise real tools.
+# Requires: bats, yq (mikefarah v4), git, find — for tests that exercise real tools.
+# Tests that run real kustomize skip when it is not installed (see success paths and similar).
 # Run: bats maintenance/rover-group-sync/test/sync-rover-groups.bats
 
 load test_helpers
@@ -24,12 +25,22 @@ setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../sync-rover-groups.sh"
   unset REASON
   unset CASE
+  unset KUSTOMIZE
 }
 
 stub_binaries() {
+  # Satisfy script preflight for tests that exit before these tools run meaningfully.
   export OC="/bin/true"
   export YQ="/bin/true"
   export GIT="/bin/true"
+  export SED="/bin/true"
+  export DATE_CMD="/bin/true"
+  export KUSTOMIZE="/bin/true"
+  if [[ -x /usr/bin/find ]]; then
+    export FIND="/usr/bin/find"
+  elif [[ -n "$(command -v find)" ]]; then
+    export FIND="$(command -v find)"
+  fi
 }
 
 # --- missing binaries (command -v) ---
@@ -59,6 +70,42 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 1 ]]
   [[ "${output}" == *"missing oc"* ]]
+}
+
+@test "fails when kustomize is not installed (KUSTOMIZE points to missing file)" {
+  stub_binaries
+  export KUSTOMIZE="${test_root}/no-such-kustomize"
+  export GIT_REPO_URL="https://example.invalid/repo.git"
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"missing kustomize"* ]]
+}
+
+@test "fails when find is not installed (FIND points to missing file)" {
+  stub_binaries
+  export FIND="${test_root}/no-such-find"
+  export GIT_REPO_URL="https://example.invalid/repo.git"
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"missing find"* ]]
+}
+
+@test "fails when date is not installed (DATE_CMD points to missing file)" {
+  stub_binaries
+  export DATE_CMD="${test_root}/no-such-date"
+  export GIT_REPO_URL="https://example.invalid/repo.git"
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"missing date"* ]]
+}
+
+@test "fails when sed is not installed (SED points to missing file)" {
+  stub_binaries
+  export SED="${test_root}/no-such-sed"
+  export GIT_REPO_URL="https://example.invalid/repo.git"
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"missing sed"* ]]
 }
 
 # --- empty environment variables ---
@@ -197,6 +244,7 @@ stub_binaries() {
 @test "fails when git clone fails" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  export KUSTOMIZE="/bin/true"
   export OC="/bin/true"
   export YQ="$(command -v yq)"
   export REASON=clone
@@ -211,6 +259,8 @@ stub_binaries() {
 @test "fails when git commit fails" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -233,6 +283,8 @@ stub_binaries() {
 @test "fails when git push fails" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -257,6 +309,7 @@ stub_binaries() {
 @test "fails when oc adm groups sync fails" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  export KUSTOMIZE="/bin/true"
 
   export CASE=sync-fail
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -280,6 +333,7 @@ stub_binaries() {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
   [[ -n "$(command -v find)" ]] || skip "find not installed"
+  export KUSTOMIZE="/bin/true"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -304,6 +358,7 @@ stub_binaries() {
 @test "fails when yq cannot parse oc group list output (malformed yaml)" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  export KUSTOMIZE="/bin/true"
 
   export CASE=malformed-yaml
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -325,6 +380,8 @@ stub_binaries() {
 @test "fails when yq cannot read .items[i].metadata.name" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -348,6 +405,8 @@ stub_binaries() {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
   [[ -n "$(command -v sed)" ]] || skip "sed not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -367,11 +426,61 @@ stub_binaries() {
   [[ "${output}" == *"simulated filename sanitize failure"* ]]
 }
 
+@test "fails when kustomize init fails" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+
+  export CASE=single
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export YQ="$(command -v yq)"
+  export REASON=init
+  export KUSTOMIZE="${BATS_TEST_DIRNAME}/stubs/stub-kustomize"
+  chmod +x "${KUSTOMIZE}"
+  export GIT="$(command -v git)"
+  export GIT_SSH_COMMAND="true"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"simulated init failure"* ]]
+}
+
+@test "fails when kustomize edit add resource fails" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+
+  export CASE=single
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export YQ="$(command -v yq)"
+  export REASON=edit
+  export KUSTOMIZE="${BATS_TEST_DIRNAME}/stubs/stub-kustomize"
+  chmod +x "${KUSTOMIZE}"
+  export GIT="$(command -v git)"
+  export GIT_SSH_COMMAND="true"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 1 ]]
+  [[ "${output}" == *"simulated edit add resource failure"* ]]
+}
+
 # --- success paths ---
 
 @test "syncs groups, writes manifests, commits and pushes with one group" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -386,9 +495,17 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml"
+  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/staging/rover/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
+
+  run yq -o=json -I=0 '.resources' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == '["test-group.yaml"]' ]]
+
+  run yq '.apiVersion' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == "kustomize.config.k8s.io/v1beta1" ]]
+  run yq '.kind' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == "Kustomization" ]]
 
   run git -C "${bare}" log --oneline -1
   [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
@@ -397,6 +514,8 @@ stub_binaries() {
 @test "syncs groups, writes manifests, commits and pushes with multiple groups" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=multi
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -410,23 +529,33 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml" ]]
-  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml" ]]
+  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-alpha.yaml" ]]
+  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-bravo.yaml" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml"
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-alpha.yaml"
   [[ "${output}" == "rover-alpha" ]]
-  run yq '.users | length' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-alpha.yaml"
+  run yq '.users | length' "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-alpha.yaml"
   [[ "${output}" == "0" ]]
 
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml"
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-bravo.yaml"
   [[ "${output}" == "rover-bravo" ]]
-  run yq '.users[0]' "${WORKDIR}/components/rover-group-sync/staging/groups/rover-bravo.yaml"
+  run yq '.users[0]' "${WORKDIR}/components/k8s-groups/staging/rover/groups/rover-bravo.yaml"
   [[ "${output}" == "user-one" ]]
+
+  run yq -o=json -I=0 '.resources' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == '["rover-alpha.yaml","rover-bravo.yaml"]' ]]
+
+  run yq '.apiVersion' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == "kustomize.config.k8s.io/v1beta1" ]]
+  run yq '.kind' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == "Kustomization" ]]
 }
 
 @test "syncs groups, writes manifests, commits and pushes when GIT_BRANCH is set" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -447,8 +576,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/test-group.yaml"
+  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/staging/rover/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1 my-branch
@@ -458,6 +587,8 @@ stub_binaries() {
 @test "syncs groups, writes manifests, commits and pushes when ENVIRONMENT is set" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -473,8 +604,8 @@ stub_binaries() {
   run bash "${SCRIPT}"
   [[ "${status}" -eq 0 ]]
 
-  [[ -f "${WORKDIR}/components/rover-group-sync/production/groups/test-group.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/production/groups/test-group.yaml"
+  [[ -f "${WORKDIR}/components/k8s-groups/production/rover/groups/test-group.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/production/rover/groups/test-group.yaml"
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
@@ -484,6 +615,8 @@ stub_binaries() {
 @test "syncs groups, sanitizes metadata.name into a safe filename (sed), writes manifests, commits and pushes with one group" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=sanitize
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
@@ -498,14 +631,55 @@ stub_binaries() {
   [[ "${status}" -eq 0 ]]
 
   # konflux:weird/name -> colon and slash become underscores (see sync-rover-groups.sh sed)
-  [[ -f "${WORKDIR}/components/rover-group-sync/staging/groups/konflux_weird_name.yaml" ]]
-  run yq '.metadata.name' "${WORKDIR}/components/rover-group-sync/staging/groups/konflux_weird_name.yaml"
+  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/konflux_weird_name.yaml" ]]
+  run yq '.metadata.name' "${WORKDIR}/components/k8s-groups/staging/rover/groups/konflux_weird_name.yaml"
   [[ "${output}" == "konflux:weird/name" ]]
+
+  run yq -o=json -I=0 '.resources' "${WORKDIR}/components/k8s-groups/staging/rover/groups/kustomization.yaml"
+  [[ "${output}" == '["konflux_weird_name.yaml"]' ]]
+}
+
+@test "syncs zero groups, writes kustomization only, and treats resources as empty" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
+
+  export CASE=empty
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export GIT_SSH_COMMAND="true"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 0 ]]
+
+  local groups_dir="${WORKDIR}/components/k8s-groups/staging/rover/groups"
+  [[ -f "${groups_dir}/kustomization.yaml" ]]
+  mapfile -t yaml_files < <(find "${groups_dir}" -maxdepth 1 -type f -name '*.yaml' | sort)
+  [[ "${#yaml_files[@]}" -eq 1 ]]
+  [[ "$(basename "${yaml_files[0]}")" == "kustomization.yaml" ]]
+
+  run yq '(.resources // []) | length' "${groups_dir}/kustomization.yaml"
+  [[ "${output}" == "0" ]]
+
+  run yq '.apiVersion' "${groups_dir}/kustomization.yaml"
+  [[ "${output}" == "kustomize.config.k8s.io/v1beta1" ]]
+  run yq '.kind' "${groups_dir}/kustomization.yaml"
+  [[ "${output}" == "Kustomization" ]]
+
+  run git -C "${bare}" log --oneline -1
+  [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
 }
 
 @test "exits 0 without commit when manifests are unchanged" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+  export KUSTOMIZE="$(command -v kustomize)"
 
   export CASE=single
   export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"

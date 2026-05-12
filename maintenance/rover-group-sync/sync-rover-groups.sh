@@ -3,17 +3,18 @@
 # Inject credentials into LDAP config, sync LDAP groups via oc adm groups sync,
 # write one portable Group manifest per file, commit + push.
 #
-# Intended for use in a Kubernetes CronJob; requires oc, yq (mikefarah v4), git.
+# Intended for use in a Kubernetes CronJob; requires oc, yq (mikefarah v4), git, kustomize.
 
 set -euo pipefail
 
-# Environment overrides (useful for tests): OC, YQ, GIT, SED, FIND, DATE_CMD,
+# Environment overrides (useful for tests)
 OC="${OC:-oc}"
 YQ="${YQ:-yq}"
 GIT="${GIT:-git}"
 SED="${SED:-sed}"
 FIND="${FIND:-find}"
 DATE_CMD="${DATE_CMD:-date}"
+KUSTOMIZE="${KUSTOMIZE:-kustomize}"
 
 SYNC_CONFIG_SOURCE="${SYNC_CONFIG_SOURCE:-/config/ldap-sync-config.yaml}"
 LDAP_CA_PATH="${LDAP_CA_PATH:-/secrets/ca.crt}"
@@ -25,20 +26,17 @@ ENVIRONMENT="${ENVIRONMENT:-staging}"
 
 # Check for package requirements
 echo "Checking for package requirements..."
-if ! command -v "${OC}" >/dev/null; then
-    echo "missing oc in PATH" >&2
-    exit 1
-fi
-
-if ! command -v "${YQ}" >/dev/null; then
-    echo "missing yq in PATH" >&2
-    exit 1
-fi
-
-if ! command -v "${GIT}" >/dev/null; then
-    echo "missing git in PATH" >&2
-    exit 1
-fi
+for _var in OC YQ GIT SED FIND DATE_CMD KUSTOMIZE; do
+    _cmd="${!_var}"
+    if ! command -v "${_cmd}" >/dev/null 2>&1; then
+        case "${_var}" in
+            DATE_CMD) _name="date" ;;
+            *) _name="${_var,,}" ;;
+        esac
+        echo "missing ${_name} in PATH" >&2
+        exit 1
+    fi
+done
 
 # Check environment variable values
 echo "Validating environment variables..."
@@ -67,10 +65,25 @@ if [[ "${ENVIRONMENT}" != "staging" && "${ENVIRONMENT}" != "production" ]]; then
     exit 1
 fi
 
+# Temp paths (set as created; cleanup removes whatever exists on any exit).
+SYNC_CONFIG_FILE=""
+SSH_KNOWN_HOSTS=""
+GROUP_LIST_TMP=""
+SYNC_TMP_HOME=""
+
+cleanup() {
+    set +e
+    [[ -n "${SSH_KNOWN_HOSTS:-}" ]] && rm -f "${SSH_KNOWN_HOSTS}"
+    [[ -n "${GROUP_LIST_TMP:-}" ]] && rm -f "${GROUP_LIST_TMP}"
+    [[ -n "${SYNC_CONFIG_FILE:-}" ]] && rm -f "${SYNC_CONFIG_FILE}"
+    [[ -n "${SYNC_TMP_HOME:-}" ]] && rm -rf "${SYNC_TMP_HOME}"
+    true
+}
+trap cleanup EXIT
+
 # Inject credentials into LDAP config writable copy; ConfigMap mount is read-only
 echo "Injecting credentials into LDAP config..."
 SYNC_CONFIG_FILE="$(mktemp)"
-trap 'rm -f "${SYNC_CONFIG_FILE}"' EXIT
 cp "${SYNC_CONFIG_SOURCE}" "${SYNC_CONFIG_FILE}"
 
 export LDAP_PASSWORD LDAP_DN LDAP_CA_PATH
@@ -78,21 +91,20 @@ export LDAP_PASSWORD LDAP_DN LDAP_CA_PATH
 "${YQ}" -i '.bindDN = strenv(LDAP_DN)' "${SYNC_CONFIG_FILE}"
 "${YQ}" -i '.ca = strenv(LDAP_CA_PATH)' "${SYNC_CONFIG_FILE}"
 
-# Clone branch into work directory (tests may set WORKDIR to a fixed path)
+# Tests may set WORKDIR to a fixed path.
 echo "Creating work directory..."
 WORKDIR="${WORKDIR:-$(mktemp -d --suffix=-workdir)}"
 rm -rf "${WORKDIR}"
 mkdir -p "${WORKDIR}"
 
-# SSH defaults to ~/.ssh/known_hosts when adding hosts (StrictHostKeyChecking=accept-new).
-# Force an explicit known_hosts file under a temporary home directory since HOME will be unset and thus
-# ~/.ssh will not be writable.
-HOME="$(mktemp -d --suffix=-home)"
-trap 'rm -rf "${HOME}"' EXIT
-SSH_KNOWN_HOSTS="$(mktemp -p "${HOME}" rover-sync-known_hosts.XXXXXX)"
+# Force an explicit known_hosts file under a temporary home directory since HOME may be unset and thus
+# ~/.ssh would not be writable.
+SYNC_TMP_HOME="$(mktemp -d --suffix=-home)"
+export HOME="${SYNC_TMP_HOME}"
+SSH_KNOWN_HOSTS="$(mktemp -p "${SYNC_TMP_HOME}" rover-sync-known_hosts.XXXXXX)"
 chmod 600 "${SSH_KNOWN_HOSTS}"
-trap 'rm -f "${SYNC_CONFIG_FILE}" "${SSH_KNOWN_HOSTS}"' EXIT
 
+# Clone branch into work directory
 if [[ -z "${GIT_SSH_COMMAND:-}" ]]; then
     export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") \
 -o StrictHostKeyChecking=accept-new \
@@ -103,29 +115,33 @@ fi
 cd "${WORKDIR}"
 
 # Get all Group objects - portable only (no annotations/labels/cluster metadata)
-LIST_TMP="$(mktemp)"
-trap 'rm -f "${LIST_TMP}" "${SYNC_CONFIG_FILE}" "${SSH_KNOWN_HOSTS}"' EXIT
+GROUP_LIST_TMP="$(mktemp)"
 
 echo "Retrieving groups from LDAP..."
 "${OC}" adm groups sync --sync-config="${SYNC_CONFIG_FILE}" -o yaml | "${YQ}" \
     '.items |= map({"apiVersion": .apiVersion, "kind": .kind, "metadata": {"name": .metadata.name}, "users": (.users // [])})' \
-    >"${LIST_TMP}"
+    >"${GROUP_LIST_TMP}"
 
-COUNT="$("${YQ}" '.items | length' "${LIST_TMP}")"
+COUNT="$("${YQ}" '.items | length' "${GROUP_LIST_TMP}")"
 
-# Create Group manifests in target directory (and sanitize the group name)
+# Create Group manifests and kustomization file in target directory using sanitized file names
 echo "Creating Group manifests in target ${ENVIRONMENT} groups directory..."
-TARGET_DIR="${WORKDIR}/components/rover-group-sync/${ENVIRONMENT}/groups/"
+TARGET_DIR="${WORKDIR}/components/k8s-groups/${ENVIRONMENT}/rover/groups/"
 mkdir -p "${TARGET_DIR}"
 "${FIND}" "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
 
+pushd "${TARGET_DIR}"
+"${KUSTOMIZE}" init
 i=0
 while [[ "${i}" -lt "${COUNT}" ]]; do
-    name="$("${YQ}" ".items[${i}].metadata.name" "${LIST_TMP}")"
+    name="$("${YQ}" ".items[${i}].metadata.name" "${GROUP_LIST_TMP}")"
     safe="$(printf '%s' "${name}" | "${SED}" 's/[^a-zA-Z0-9._-]/_/g')"
-    "${YQ}" ".items[${i}]" "${LIST_TMP}" -o yaml >"${TARGET_DIR}/${safe}.yaml"
+    "${YQ}" ".items[${i}]" "${GROUP_LIST_TMP}" -o yaml >"${TARGET_DIR}/${safe}.yaml"
+    "${KUSTOMIZE}" edit add resource "${safe}.yaml"
     i=$((i + 1))
 done
+
+popd
 
 # Commit to Git repo if the groups were updated (must match TARGET_DIR tree)
 "${GIT}" add "${TARGET_DIR}"

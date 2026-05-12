@@ -10,8 +10,10 @@ RUN curl -fsSL -o /tmp/yq "https://github.com/mikefarah/yq/releases/download/${Y
     && mv /tmp/yq /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq
 
-# Install git
-RUN yum install -y git && yum clean all
+# Install git & kustomize (single layer)
+RUN yum install -y epel-release \
+    && yum install -y git kustomize \
+    && yum clean all
 
 # Copy the sync script
 WORKDIR /scripts

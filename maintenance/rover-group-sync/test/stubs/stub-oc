@@ -5,7 +5,7 @@
 #   sanitize        — one Group with a name to be sanitized (konflux:weird/name
 #   sync-fail       — sync exits 1 (LDAP/API error)
 #   malformed-yaml  — stdout is not valid YAML (breaks the yq pipe)
-
+#   empty           — valid List with items: [] (no groups)
 if [[ "${1:-}" != "adm" || "${2:-}" != "groups" || "${3:-}" != "sync" ]]; then
   echo "stub oc: unsupported invocation: $*" >&2
   exit 99
@@ -67,8 +67,16 @@ EOF
     printf '%s\n' 'INVALID_YAML: [unclosed'
     exit 0
     ;;
+  empty)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items: []
+EOF
+    exit 0
+    ;;
   *)
-    echo "stub oc: set CASE to single, multi, sanitize, sync-fail, or malformed-yaml" >&2
+    echo "stub oc: set CASE to single, multi, sanitize, sync-fail, malformed-yaml, or empty" >&2
     exit 99
     ;;
 esac
