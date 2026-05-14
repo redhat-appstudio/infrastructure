@@ -1,4 +1,4 @@
-FROM quay.io/openshift/origin-cli:4.18
+FROM quay.io/openshift/origin-cli:4.22
 
 # Install yq (mikefarah v4): verify SHA256 of the release binary before install (supply-chain).
 # Hash is for https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64 (linux/amd64).
