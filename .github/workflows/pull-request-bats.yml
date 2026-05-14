@@ -1,0 +1,36 @@
+# Run Bats tests when a pull request targets the default branch (opened, new
+# commits, reopened, or PR metadata edited).
+name: Bats tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Bats and yq
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y bats
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          bats --version
+          yq --version
+
+      - name: Run Bats tests
+        run: |
+          set -euo pipefail
+          mapfile -t bats_files < <(git ls-files '*.bats')
+          if [[ ${#bats_files[@]} -eq 0 ]]; then
+            echo 'error: no tracked .bats files found' >&2
+            exit 1
+          fi
+          bats "${bats_files[@]}"
