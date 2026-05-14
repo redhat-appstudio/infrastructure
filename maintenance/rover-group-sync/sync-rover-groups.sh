@@ -134,7 +134,7 @@ if "${GIT}" diff --cached --quiet; then
     exit 0
 fi
 
-"${GIT}" -c user.email="${GIT_AUTHOR_EMAIL:-group-sync@local}" -c user.name="${GIT_AUTHOR_NAME:-group-sync-bot}" \
-    commit -m "chore(groups): sync rover LDAP groups ${BRANCH} $("${DATE_CMD}" -u +%Y-%m-%dT%H:%M:%SZ)"
+"${GIT}" -c user.email="${GIT_AUTHOR_EMAIL:-rover-group-sync@local}" -c user.name="${GIT_AUTHOR_NAME:-rover-group-sync-bot}" \
+    commit -m "chore(groups): sync ${ENVIRONMENT} rover LDAP groups ${BRANCH} $("${DATE_CMD}" -u +%Y-%m-%dT%H:%M:%SZ)"
 
 "${GIT}" push "${GIT_REPO_URL}" "${BRANCH}"

@@ -391,7 +391,7 @@ stub_binaries() {
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
 }
 
 @test "syncs groups, writes manifests, commits and pushes with multiple groups" {
@@ -452,7 +452,7 @@ stub_binaries() {
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1 my-branch
-  [[ "${output}" == *"chore(groups): sync rover LDAP groups my-branch"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups my-branch"* ]]
 }
 
 @test "syncs groups, writes manifests, commits and pushes when ENVIRONMENT is set" {
@@ -478,7 +478,7 @@ stub_binaries() {
   [[ "${output}" == "test-group" ]]
 
   run git -C "${bare}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
 }
 
 @test "syncs groups, sanitizes metadata.name into a safe filename (sed), writes manifests, commits and pushes with one group" {
