@@ -114,12 +114,25 @@ fi
 "${GIT}" clone --depth 1 --branch "${BRANCH}" "${GIT_REPO_URL}" "${WORKDIR}"
 cd "${WORKDIR}"
 
-# Get all Group objects - portable only (no annotations/labels/cluster metadata)
+# Get Group objects with minimal metadata; keep openshift.io/ldap* labels/annotations for LDAP sync provenance
 GROUP_LIST_TMP="$(mktemp)"
 
 echo "Retrieving groups from LDAP..."
 "${OC}" adm groups sync --sync-config="${SYNC_CONFIG_FILE}" -o yaml | "${YQ}" \
-    '.items |= map({"apiVersion": .apiVersion, "kind": .kind, "metadata": {"name": .metadata.name}, "users": (.users // [])})' \
+    '.items |= map({
+      "apiVersion": .apiVersion,
+      "kind": .kind,
+      "metadata": (
+        {"name": .metadata.name}
+        + ({"labels": (.metadata.labels // {}
+            | with_entries(select(.key | test("^openshift\\.io/ldap"))))}
+          | select(.labels | length > 0))
+        + ({"annotations": (.metadata.annotations // {}
+            | with_entries(select(.key | test("^openshift\\.io/ldap"))))}
+          | select(.annotations | length > 0))
+      ),
+      "users": (.users // [])
+    })' \
     >"${GROUP_LIST_TMP}"
 
 COUNT="$("${YQ}" '.items | length' "${GROUP_LIST_TMP}")"
