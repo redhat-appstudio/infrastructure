@@ -511,6 +511,72 @@ stub_binaries() {
   [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
 }
 
+@test "preserves openshift.io/ldap labels and annotations in group manifests" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+
+  export CASE=ldap-metadata
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export GIT_SSH_COMMAND="true"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 0 ]]
+
+  manifest="${WORKDIR}/components/k8s-groups/staging/rover/groups/konflux-admins.yaml"
+  [[ -f "${manifest}" ]]
+
+  run yq '.metadata.labels."openshift.io/ldap.host"' "${manifest}"
+  [[ "${output}" == "ldap.corp.redhat.com" ]]
+
+  run yq '.metadata.annotations."openshift.io/ldap.uid"' "${manifest}"
+  [[ "${output}" == "cn=konflux-admins,ou=adhoc,ou=managedGroups,dc=redhat,dc=com" ]]
+
+  run yq '.metadata.annotations."openshift.io/ldap.url"' "${manifest}"
+  [[ "${output}" == "ldaps://ldap.corp.redhat.com" ]]
+}
+
+@test "strips non-openshift.io/ldap labels and annotations from group manifests" {
+  [[ -n "$(command -v yq)" ]] || skip "yq not installed"
+  [[ -n "$(command -v git)" ]] || skip "git not installed"
+  [[ -n "$(command -v kustomize)" ]] || skip "kustomize not installed"
+
+  export CASE=ldap-metadata
+  export OC="${BATS_TEST_DIRNAME}/stubs/stub-oc"
+  chmod +x "${OC}"
+  export GIT_SSH_COMMAND="true"
+
+  bare="$(mktemp -d)/remote.git"
+  init_bare_repo_with_empty_commit "${bare}"
+  export GIT_REPO_URL="file://${bare}"
+
+  run bash "${SCRIPT}"
+  [[ "${status}" -eq 0 ]]
+
+  manifest="${WORKDIR}/components/k8s-groups/staging/rover/groups/konflux-admins.yaml"
+  [[ -f "${manifest}" ]]
+
+  run yq '.metadata.labels | has("app.kubernetes.io/managed-by")' "${manifest}"
+  [[ "${output}" == "false" ]]
+
+  run yq '.metadata.annotations | has("kubectl.kubernetes.io/last-applied-configuration")' "${manifest}"
+  [[ "${output}" == "false" ]]
+
+  run yq '.metadata.annotations | has("openshift.io/ldap.sync-time")' "${manifest}"
+  [[ "${output}" == "false" ]]
+
+  run yq '.metadata.labels | length' "${manifest}"
+  [[ "${output}" == "1" ]]
+
+  run yq '.metadata.annotations | length' "${manifest}"
+  [[ "${output}" == "2" ]]
+}
+
 @test "syncs groups, writes manifests, commits and pushes with multiple groups" {
   [[ -n "$(command -v yq)" ]] || skip "yq not installed"
   [[ -n "$(command -v git)" ]] || skip "git not installed"

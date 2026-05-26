@@ -127,7 +127,7 @@ echo "Retrieving groups from LDAP..."
             | with_entries(select(.key | test("^openshift\\.io/ldap"))))}
           | select(.labels | length > 0))
         + ({"annotations": (.metadata.annotations // {}
-            | with_entries(select(.key | test("^openshift\\.io/ldap") and .key != "openshift.io/ldap.sync-time")))}
+            | with_entries(select((.key | test("^openshift\\.io/ldap")) and (.key != "openshift.io/ldap.sync-time"))))}
           | select(.annotations | length > 0))
       ),
       "users": (.users // [])

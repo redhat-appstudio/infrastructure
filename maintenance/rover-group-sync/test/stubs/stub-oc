@@ -3,6 +3,7 @@
 #   single          — one Group (test-group)
 #   multi           — multiple Groups rover-alpha, rover-bravo
 #   sanitize        — one Group with a name to be sanitized (konflux:weird/name
+#   ldap-metadata   — one Group with openshift.io/ldap* labels/annotations, sync-time, and noise
 #   sync-fail       — sync exits 1 (LDAP/API error)
 #   malformed-yaml  — stdout is not valid YAML (breaks the yq pipe)
 #   empty           — valid List with items: [] (no groups)
@@ -20,6 +21,11 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
+      annotations:
+        openshift.io/ldap.uid: stuff-and-things
+        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
       name: test-group
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -39,6 +45,11 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
+      annotations:
+        openshift.io/ldap.uid: stuff-and-things
+        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
       name: rover-alpha
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -49,6 +60,11 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
+      annotations:
+        openshift.io/ldap.uid: stuff-and-things
+        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
       name: rover-bravo
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -68,12 +84,37 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
+      annotations:
+        openshift.io/ldap.uid: stuff-and-things
+        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
       name: konflux:weird/name
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
       annotations:
         openshift.io/ldap.uid: cn=konflux:weird/name,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
         openshift.io/ldap.url: ldap.corp.redhat.com:636
+    users:
+      - sync-test-user
+EOF
+    exit 0
+    ;;
+  ldap-metadata)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: konflux-admins
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+        app.kubernetes.io/managed-by: manual
+      annotations:
+        openshift.io/ldap.uid: cn=konflux-admins,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
+        openshift.io/ldap.sync-time: "2026-05-26T12:00:00Z"
+        kubectl.kubernetes.io/last-applied-configuration: '{"kind":"Group"}'
     users:
       - sync-test-user
 EOF
@@ -96,7 +137,7 @@ EOF
     exit 0
     ;;
   *)
-    echo "stub oc: set CASE to single, multi, sanitize, sync-fail, malformed-yaml, or empty" >&2
+    echo "stub oc: set CASE to single, multi, sanitize, ldap-metadata, sync-fail, malformed-yaml, or empty" >&2
     exit 99
     ;;
 esac
