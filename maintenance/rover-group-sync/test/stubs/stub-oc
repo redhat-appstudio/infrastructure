@@ -21,6 +21,11 @@ items:
     kind: Group
     metadata:
       name: test-group
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+      annotations:
+        openshift.io/ldap.uid: cn=test-group,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldap.corp.redhat.com:636
     users:
       - user1
 EOF
@@ -35,11 +40,21 @@ items:
     kind: Group
     metadata:
       name: rover-alpha
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+      annotations:
+        openshift.io/ldap.uid: cn=rover-alpha,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldap.corp.redhat.com:636
     users: []
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
       name: rover-bravo
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+      annotations:
+        openshift.io/ldap.uid: cn=rover-bravo,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldap.corp.redhat.com:636
     users:
       - user-one
 EOF
@@ -54,6 +69,11 @@ items:
     kind: Group
     metadata:
       name: konflux:weird/name
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+      annotations:
+        openshift.io/ldap.uid: cn=konflux:weird/name,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldap.corp.redhat.com:636
     users:
       - sync-test-user
 EOF

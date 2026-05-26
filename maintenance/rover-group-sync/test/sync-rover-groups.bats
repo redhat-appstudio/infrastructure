@@ -672,7 +672,7 @@ stub_binaries() {
   [[ "${output}" == "Kustomization" ]]
 
   run git -C "${bare}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
 }
 
 @test "exits 0 without commit when manifests are unchanged" {
