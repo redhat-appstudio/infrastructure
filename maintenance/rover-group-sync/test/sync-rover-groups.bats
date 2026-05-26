@@ -567,6 +567,9 @@ stub_binaries() {
   run yq '.metadata.annotations | has("kubectl.kubernetes.io/last-applied-configuration")' "${manifest}"
   [[ "${output}" == "false" ]]
 
+  run yq '.metadata.annotations | has("openshift.io/ldap.sync-time")' "${manifest}"
+  [[ "${output}" == "false" ]]
+
   run yq '.metadata.labels | length' "${manifest}"
   [[ "${output}" == "1" ]]
 
