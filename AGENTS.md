@@ -23,6 +23,12 @@ rover-group-sync:
 | Lint    | `shellcheck maintenance/rover-group-sync/sync-rover-groups.sh` |
 | Test    | `bats maintenance/rover-group-sync/test/`                      |
 
+Pre-commit:
+| Action  | Command                                       |
+|---------|-----------------------------------------------|
+| Setup   | `pip install pre-commit && pre-commit install` |
+| Run all | `pre-commit run --all-files`                   |
+
 ### Single-File Verification
 
 - Terraform format: `terraform fmt path/to/file.tf`
