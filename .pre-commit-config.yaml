@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: cef0300fd0fc4d2a87a85fa2093c6b283ea36f4b # v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/koalaman/shellcheck-precommit
+    rev: 2491238703a5d3415bb2b7ff11388bf775372f29 # v0.10.0
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: 79a6b2b1392eaf49cdd32ac4f14be1a809bbd8f7 # v1.37.1
+    hooks:
+      - id: yamllint
+        args: [-s]
+
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: 9aa1e0e7b353dca419a08d3abd2e9f5a0978c383 # v1.99.2
+    hooks:
+      - id: terraform_fmt
