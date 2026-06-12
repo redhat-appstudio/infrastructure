@@ -23,6 +23,13 @@ rover-group-sync:
 | Lint    | `shellcheck maintenance/rover-group-sync/sync-rover-groups.sh` |
 | Test    | `bats maintenance/rover-group-sync/test/`                      |
 
+### Single-File Verification
+
+- Terraform format: `terraform fmt path/to/file.tf`
+- Shell lint: `shellcheck path/to/script.sh`
+- YAML lint: `yamllint path/to/file.yaml`
+- BATS test single: `bats path/to/test_file.bats`
+
 ## Project Layout
 
 Terraform module (located at `terraform/modules/`):
