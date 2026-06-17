@@ -106,9 +106,10 @@ chmod 600 "${SSH_KNOWN_HOSTS}"
 
 # Clone branch into work directory
 if [[ -z "${GIT_SSH_COMMAND:-}" ]]; then
-    export GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") \
+    GIT_SSH_COMMAND="ssh -i $(printf '%q' "${GIT_PRIVATE_SSH_PATH}") \
 -o StrictHostKeyChecking=accept-new \
 -o UserKnownHostsFile=$(printf '%q' "${SSH_KNOWN_HOSTS}")"
+    export GIT_SSH_COMMAND
 fi
 
 "${GIT}" clone --depth 1 --branch "${BRANCH}" "${GIT_REPO_URL}" "${WORKDIR}"
