@@ -6,20 +6,19 @@ WORKDIR /opt/app-root/src
 # Copy the Go Modules manifests
 COPY build-deps/go.mod build-deps/go.sum ./
 
-# Download dependencies
-RUN go mod download
-
-# Build etcdctl
-RUN go build -o etcdctl go.etcd.io/etcd/etcdctl/v3
+# Download dependencies and build
+RUN go mod download && \
+    go build -o etcdctl go.etcd.io/etcd/etcdctl/v3
 
 # Second stage: Create the final image
 FROM registry.redhat.io/ubi9:9.7-1775624009
 
 COPY defrag.sh /opt/
 
-RUN dnf -y install jq && dnf clean all
-
 # Copy etcdctl from builder
 COPY --from=builder  /opt/app-root/src/etcdctl /usr/bin/etcdctl
+
+# hadolint ignore=DL3041 # we basically always want the latest version on jq, even if it's bad practice to not pin dependencies
+RUN dnf -y install jq && dnf clean all
 
 CMD [ "/bin/sh" ]
