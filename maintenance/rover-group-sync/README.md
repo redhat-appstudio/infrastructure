@@ -16,7 +16,7 @@ The script supports overriding command paths (`OC`, `YQ`, `GIT` etc.) and `GIT_S
 
 ## Tests
 
-Tests are written with [BATS](https://github.com/bats-core/bats-core) and live under `test/`. They use fixtures (`test/fixtures/`) and shell stubs (`test/stubs/`) to simulate `oc`, `git`, `yq` etc. failures, and local Git remotes without a real cluster or network.
+Tests are written with [BATS](https://github.com/bats-core/bats-core) and live under `test/bats/`. They use fixtures (`test/fixtures/`) and shell stubs (`test/stubs/`) to simulate `oc`, `git`, `yq` etc. failures, and local Git remotes without a real cluster or network.
 
 **Requirements to run the suite:**
 
@@ -31,19 +31,23 @@ Install BATS with your OS package manager (for example `dnf install bats` on Fed
 **Run all tests** from the repository root:
 
 ```bash
-bats maintenance/rover-group-sync/test/sync-rover-groups.bats
+bats maintenance/rover-group-sync/test/bats/
 ```
 
 Or from this directory:
 
 ```bash
 cd maintenance/rover-group-sync
-bats test/sync-rover-groups.bats
+bats test/bats/
 ```
+
+Tests are split by script function. Shared setup and helpers live in `test/bats/test_helpers.bash`.
 
 **Stub environment variables** (used only in tests):
 
-- `CASE` — selects behavior for `stub-oc` (`single`, `multi`, `sanitize`, `sync-fail`, `malformed-yaml`, …).
-- `REASON` — selects failure modes for `stub-git` and `stub-yq` (for example `clone`, `commit`, `push`).
+- `CASE` — selects stub output for `stub-oc` (`single`, `multi`, `sanitize`, `ldap-metadata`, `empty`, etc.).
+- `REASON` — selects failure modes for stubs (`clone`, `commit`, `push`, `add`, `temp-file`, `temp-dir`, `known-hosts`, `raw-sync`, `sync-fail`, `malformed-yaml`, etc.).
 
 These are unset between tests in `setup()` so cases do not leak into each other.
+
+**Logging assertions:** failure tests use `assert_log_error` to require script output containing `ERROR: …`. Success and integration tests use `assert_log_info` for `INFO: …` lines where relevant.

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Wraps real git and only fails based on the REASON environment variable.
 #   clone  — first arg is "clone"
+#   add    — first arg is "add"
 #   commit — argv contains the subcommand "commit"
 #   push   — argv contains the subcommand "push"
 REAL_GIT="$(command -v git)"
@@ -10,6 +11,12 @@ case "${REASON:-}" in
   clone)
     if [[ "${1:-}" == "clone" ]]; then
       echo "git: simulated clone failure" >&2
+      exit 1
+    fi
+    ;;
+  add)
+    if [[ "${1:-}" == "add" ]]; then
+      echo "git: simulated add failure" >&2
       exit 1
     fi
     ;;
@@ -30,7 +37,7 @@ case "${REASON:-}" in
     done
     ;;
   *)
-    echo "stub git: set REASON to clone, commit, or push" >&2
+    echo "stub git: set REASON to clone, add, commit, or push" >&2
     exit 99
     ;;
 esac
