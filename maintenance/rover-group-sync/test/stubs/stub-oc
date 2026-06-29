@@ -4,6 +4,7 @@
 #   multi           — multiple Groups rover-alpha, rover-bravo
 #   sanitize        — one Group with a name to be sanitized (konflux:weird/name
 #   ldap-metadata   — one Group with openshift.io/ldap* labels/annotations, sync-time, and noise
+# Set REASON to force a failure:
 #   sync-fail       — sync exits 1 (LDAP/API error)
 #   malformed-yaml  — stdout is not valid YAML (breaks the yq pipe)
 #   empty           — valid List with items: [] (no groups)
@@ -21,11 +22,6 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
-      annotations:
-        openshift.io/ldap.uid: stuff-and-things
-        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
-      labels:
-        openshift.io/ldap.host: ldap.corp.redhat.com
       name: test-group
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -45,11 +41,6 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
-      annotations:
-        openshift.io/ldap.uid: stuff-and-things
-        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
-      labels:
-        openshift.io/ldap.host: ldap.corp.redhat.com
       name: rover-alpha
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -60,11 +51,6 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
-      annotations:
-        openshift.io/ldap.uid: stuff-and-things
-        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
-      labels:
-        openshift.io/ldap.host: ldap.corp.redhat.com
       name: rover-bravo
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -84,9 +70,6 @@ items:
   - apiVersion: user.openshift.io/v1
     kind: Group
     metadata:
-      annotations:
-        openshift.io/ldap.uid: stuff-and-things
-        openshift.io/ldap.url: ldaps://ldap.corp.redhat.com
       name: konflux:weird/name
       labels:
         openshift.io/ldap.host: ldap.corp.redhat.com
@@ -120,20 +103,23 @@ items:
 EOF
     exit 0
     ;;
-  sync-fail)
-    echo "oc: simulated adm groups sync failure" >&2
-    exit 1
-    ;;
-  malformed-yaml)
-    printf '%s\n' 'INVALID_YAML: [unclosed'
-    exit 0
-    ;;
   empty)
     cat <<'EOF'
 apiVersion: v1
 kind: List
 items: []
 EOF
+    exit 0
+    ;;
+  esac
+  
+  case "${REASON:-}" in
+  sync-fail)
+    echo "oc: simulated adm groups sync failure" >&2
+    exit 1
+    ;;
+  malformed-yaml)
+    printf '%s\n' 'INVALID_YAML: [unclosed'
     exit 0
     ;;
   *)
