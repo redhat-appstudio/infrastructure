@@ -74,6 +74,7 @@ run_main() {
 setup_common_test_env() {
   # Setup testing environment and variables
   test_root="$(mktemp -d)"
+  export TMPDIR="${test_root}"
   BATS_ABS_TEST_DIR="$(cd "${BATS_TEST_DIRNAME}" && pwd)"
   TEST_ABS_DIR="$(cd "${BATS_ABS_TEST_DIR}/.." && pwd)"
   STUBS_DIR="${TEST_ABS_DIR}/stubs"
@@ -112,6 +113,7 @@ setup_common_test_env() {
 
 teardown() {
   [[ -n "${test_root:-}" ]] && rm -rf "${test_root}"
+  cleanup || true
 }
 
 # Sets up environment variables for the clone git repo tests.

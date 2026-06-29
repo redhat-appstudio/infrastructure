@@ -141,7 +141,10 @@ clone_git_repo() {
         log_error "Failed to clone Git repository"
         return 1
     }
-    cd "${WORKDIR}"
+    cd "${WORKDIR}" || {
+        log_error "Failed to change to work directory ${WORKDIR}"
+        return 1
+    }
     log_info "Git repository cloned into work directory ${WORKDIR}."
 }
 
@@ -208,7 +211,10 @@ create_group_manifests() {
         return 1
     }
 
-    cd "${TARGET_DIR}"
+    cd "${TARGET_DIR}" || {
+        log_error "Failed to change to target directory ${TARGET_DIR}"
+        return 1
+    }
     "${KUSTOMIZE}" init || {
         log_error "Failed to initialize Kustomize"
         return 1
