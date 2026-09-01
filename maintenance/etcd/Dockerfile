@@ -11,7 +11,7 @@ RUN go mod download && \
     go build -o etcdctl go.etcd.io/etcd/etcdctl/v3
 
 # Second stage: Create the final image
-FROM registry.redhat.io/ubi9:9.7-1775624009
+FROM registry.redhat.io/ubi9:9.8-1788245065
 
 COPY defrag.sh /opt/
 
