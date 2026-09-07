@@ -7,10 +7,12 @@ Bash script intended to run in a Kubernetes CronJob (see `Dockerfile`) It:
 1. **Validates** that `oc`, `yq` (mikefarah v4), `kustomize`, and `git` are available, and that required paths and environment variables are present.
 2. **Prepares LDAP sync config** by copying the LDAP sync template and injecting `LDAP_PASSWORD`, `LDAP_DN`, and the CA path with `yq` in-place edits.
 3. **Clones** the target Git repository (branch from `GIT_BRANCH`, default `main`) into a work directory.
-4. **Syncs OpenShift Groups from LDAP** with `oc adm groups sync`, normalizes the `List` output with `yq`, and writes **one YAML file per group** under `components/k8s-groups/<ENVIRONMENT>/rover/groups`, using a filename derived from `metadata.name` (non-alphanumeric characters sanitized with `sed`). A single `kustomization.yaml` file is also generated in this directory.
-5. **Commits and pushes** only if `components/k8s-groups/<ENVIRONMENT>/rover/groups` changed; otherwise exits successfully without a commit.
+4. **Syncs OpenShift Groups from LDAP** with `oc adm groups sync`, normalizes the `List` output with `yq`, and writes **one YAML file per group** under `components/k8s-groups/<ENVIRONMENT>/rover/<IDENTITY_PROVIDER>/groups` (or `components/k8s-groups/<ENVIRONMENT>/rover/groups` when `IDENTITY_PROVIDER` is omitted), using a filename derived from `metadata.name` (non-alphanumeric characters sanitized with `sed`). A single `kustomization.yaml` file is also generated in this directory.
+5. **Commits and pushes** only if that groups directory changed; otherwise exits successfully without a commit.
 
-Typical inputs are mounted files (`SYNC_CONFIG_SOURCE`, `LDAP_CA_PATH`, `GIT_PRIVATE_SSH_PATH`) and secrets (`GIT_REPO_URL`, `LDAP_DN`, `LDAP_PASSWORD`). For Git over SSH, the script sets **`StrictHostKeyChecking=accept-new`** and uses a **temporary `known_hosts`** file. Do not disable host key verification in production.
+Typical inputs are mounted files (`SYNC_CONFIG_SOURCE`, `LDAP_CA_PATH`, `GIT_PRIVATE_SSH_PATH`) and secrets (`GIT_REPO_URL`, `LDAP_DN`, `LDAP_PASSWORD`).
+`IDENTITY_PROVIDER` is optional; when set, it names the identity-provider segment in the output path (for example `internal-rh-sso` or `ibm`). When omitted, manifests go under the legacy `rover/groups` path.
+For Git over SSH, the script sets **`StrictHostKeyChecking=accept-new`** and uses a **temporary `known_hosts`** file. Do not disable host key verification in production.
 
 The script supports overriding command paths (`OC`, `YQ`, `GIT` etc.) and `GIT_SSH_COMMAND` for testing or nonstandard installs.
 

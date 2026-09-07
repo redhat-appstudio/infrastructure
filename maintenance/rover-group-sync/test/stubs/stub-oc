@@ -4,6 +4,7 @@
 #   multi           — multiple Groups rover-alpha, rover-bravo
 #   sanitize        — one Group with a name to be sanitized (konflux:weird/name
 #   ldap-metadata   — one Group with openshift.io/ldap* labels/annotations, sync-time, and noise
+#   multi-users     — one Group with multiple users
 # Set REASON to force a failure:
 #   sync-fail       — sync exits 1 (LDAP/API error)
 #   malformed-yaml  — stdout is not valid YAML (breaks the yq pipe)
@@ -81,6 +82,26 @@ items:
 EOF
     exit 0
     ;;
+  multi-users)
+    cat <<'EOF'
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: user.openshift.io/v1
+    kind: Group
+    metadata:
+      name: test-group
+      labels:
+        openshift.io/ldap.host: ldap.corp.redhat.com
+      annotations:
+        openshift.io/ldap.uid: cn=test-group,ou=adhoc,ou=managedGroups,dc=redhat,dc=com
+        openshift.io/ldap.url: ldap.corp.redhat.com:636
+    users:
+      - alice
+      - bob
+EOF
+    exit 0
+    ;;
   ldap-metadata)
     cat <<'EOF'
 apiVersion: v1
@@ -123,7 +144,7 @@ EOF
     exit 0
     ;;
   *)
-    echo "stub oc: set CASE to single, multi, sanitize, ldap-metadata, sync-fail, malformed-yaml, or empty" >&2
+    echo "stub oc: set CASE to single, multi, multi-users, sanitize, ldap-metadata, sync-fail, malformed-yaml, or empty" >&2
     exit 99
     ;;
 esac

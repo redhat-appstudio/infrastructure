@@ -13,7 +13,7 @@ setup() {
 
   run create_group_manifests
   [[ "${status}" -eq 0 ]]
-  assert_log_info "Group manifests created in target ${ENVIRONMENT} groups directory."
+  assert_log_info "Group manifests created in target ${ENVIRONMENT}/${IDENTITY_PROVIDER} groups directory."
 
   groups_dir="$(groups_dir_for_env)"
   mapfile -t yaml_files < <(find "${groups_dir}" -maxdepth 1 -type f -name '*.yaml' | sort)
@@ -22,6 +22,19 @@ setup() {
   run yq '(.resources // []) | length' "${groups_dir}/kustomization.yaml"
   [[ "${output}" == "0" ]]
   assert_kustomization "${groups_dir}"
+}
+
+@test "writes group manifest with prefixed usernames when USERNAME_PREFIX is set" {
+  prepare_group_list single
+  export USERNAME_PREFIX="corp:"
+  apply_username_prefix
+
+  run create_group_manifests
+  [[ "${status}" -eq 0 ]]
+
+  groups_dir="$(groups_dir_for_env)"
+  run yq '.users[0]' "${groups_dir}/test-group.yaml"
+  [[ "${output}" == "corp:user1" ]]
 }
 
 @test "writes group manifest and kustomization when group list has one item" {
@@ -57,7 +70,7 @@ setup() {
   [[ "${status}" -eq 1 ]]
   assert_log_error "Failed to count groups in TEMP_GROUP_LIST"
   [[ "${output}" == *"Error:"* ]]
-  [[ "${output}" == *"yaml:"* ]]
+  [[ "${output}" == *": did not find expected ',' or ']'"* ]]
 }
 
 @test "fails when yq cannot read .items[i].metadata.name" {
