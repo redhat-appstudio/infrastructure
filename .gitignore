@@ -42,3 +42,9 @@ terraform.rc
 
 # Per-user Claude settings
 .claude/settings.local.json
+
+# Agent security
+.claude
+.cursor
+.vscode
+.agents
