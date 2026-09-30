@@ -22,6 +22,8 @@ LDAP_CA_PATH="${LDAP_CA_PATH:-/secrets/ca.crt}"
 GIT_PRIVATE_SSH_PATH="${GIT_PRIVATE_SSH_PATH:-/secrets/git-repo/ssh_private}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 ENVIRONMENT="${ENVIRONMENT:-staging}"
+IDENTITY_PROVIDER="${IDENTITY_PROVIDER:-}"
+USERNAME_PREFIX="${USERNAME_PREFIX:-}"
 
 # Temp paths (set as created; cleanup removes whatever exists on any exit).
 WRITEABLE_SYNC_CFG=""
@@ -192,6 +194,31 @@ retrieve_groups() {
     log_info "Groups retrieved from LDAP."
 }
 
+# Prefixes each username in TEMP_GROUP_LIST when USERNAME_PREFIX is non-empty.
+apply_username_prefix() {
+    if [[ -z "${USERNAME_PREFIX}" ]]; then
+        return 0
+    fi
+
+    log_info "Applying username prefix '${USERNAME_PREFIX}'..."
+    local prefixed
+    prefixed="$("${MKTEMP}")" || {
+        log_error "Failed to create temporary prefixed group list file"
+        return 1
+    }
+
+    export USERNAME_PREFIX
+    if ! "${YQ}" '.items |= map(.users = (.users // [] | map(strenv(USERNAME_PREFIX) + .)))' \
+        "${TEMP_GROUP_LIST}" >"${prefixed}"; then
+        log_error "Failed to apply username prefix (yq)"
+        rm -f "${prefixed}"
+        return 1
+    fi
+
+    mv "${prefixed}" "${TEMP_GROUP_LIST}"
+    log_info "Username prefix applied."
+}
+
 # Creates Group manifests and kustomization file in target directory using sanitized file names
 create_group_manifests() {
     local count
@@ -200,8 +227,16 @@ create_group_manifests() {
         return 1
     }
 
-    log_info "Creating Group manifests in target ${ENVIRONMENT} groups directory..."
-    TARGET_DIR="${WORKDIR}/components/k8s-groups/${ENVIRONMENT}/rover/groups/"
+    # When IDENTITY_PROVIDER is omitted, keep the legacy path used before idp nesting.
+    local target_label="${ENVIRONMENT}"
+    local idp_segment=""
+    if [[ -n "${IDENTITY_PROVIDER}" ]]; then
+        target_label="${ENVIRONMENT}/${IDENTITY_PROVIDER}"
+        idp_segment="${IDENTITY_PROVIDER}/"
+    fi
+
+    log_info "Creating Group manifests in target ${target_label} groups directory..."
+    TARGET_DIR="${WORKDIR}/components/k8s-groups/${ENVIRONMENT}/rover/${idp_segment}groups/"
     mkdir -p "${TARGET_DIR}" || {
         log_error "Failed to create target directory ${TARGET_DIR}"
         return 1
@@ -241,7 +276,7 @@ create_group_manifests() {
         }
         i=$((i + 1))
     done
-    log_info "Group manifests created in target ${ENVIRONMENT} groups directory."
+    log_info "Group manifests created in target ${target_label} groups directory."
 }
 
 # Commits and pushes the group manifests (if changed) to the Git repository
@@ -256,8 +291,11 @@ commit_and_push() {
         return 0
     fi
 
+    local idp_in_msg=""
+    [[ -n "${IDENTITY_PROVIDER}" ]] && idp_in_msg=" ${IDENTITY_PROVIDER}"
+
     "${GIT}" -c user.email="${GIT_AUTHOR_EMAIL:-rover-group-sync@local}" -c user.name="${GIT_AUTHOR_NAME:-rover-group-sync-bot}" \
-        commit -m "chore(groups): sync ${ENVIRONMENT} rover LDAP groups ${GIT_BRANCH} $(date -u +%Y-%m-%dT%H:%M:%SZ)" || {
+        commit -m "chore(groups): sync ${ENVIRONMENT} rover${idp_in_msg} LDAP groups ${GIT_BRANCH} $(date -u +%Y-%m-%dT%H:%M:%SZ)" || {
             log_error "Failed to commit changes to Git repository"
             return 1
         }
@@ -276,6 +314,7 @@ main() {
     inject_ldap_credentials
     clone_git_repo
     retrieve_groups
+    apply_username_prefix
     create_group_manifests
     commit_and_push
 

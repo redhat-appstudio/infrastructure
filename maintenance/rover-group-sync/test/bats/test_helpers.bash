@@ -2,7 +2,7 @@
 # Sourced by sync-rover-groups test files.
 
 PKG_REQS=(OC YQ GIT SED KUSTOMIZE FIND MKTEMP)
-PER_TEST_VARS=(GIT_REPO_URL TARGET_DIR GIT_BRANCH REASON CASE GIT_SSH_COMMAND BARE_REMOTE_PATH)
+PER_TEST_VARS=(GIT_REPO_URL TARGET_DIR GIT_BRANCH REASON CASE GIT_SSH_COMMAND BARE_REMOTE_PATH USERNAME_PREFIX IDENTITY_PROVIDER)
 # ------------------------------------- Helper Functions -------------------------------------
 # Skips the test unless all named tools are on PATH. Takes tool names as arguments.
 require_tools() {
@@ -59,8 +59,13 @@ use_stub() {
 }
 
 # Returns the path to the groups directory for the current environment.
+# When IDENTITY_PROVIDER is unset/empty, uses the legacy rover/groups path.
 groups_dir_for_env() {
-  printf '%s/components/k8s-groups/%s/rover/groups' "${WORKDIR}" "${ENVIRONMENT}"
+  if [[ -n "${IDENTITY_PROVIDER:-}" ]]; then
+    printf '%s/components/k8s-groups/%s/rover/%s/groups' "${WORKDIR}" "${ENVIRONMENT}" "${IDENTITY_PROVIDER}"
+  else
+    printf '%s/components/k8s-groups/%s/rover/groups' "${WORKDIR}" "${ENVIRONMENT}"
+  fi
 }
 
 # Runs the main script with the current environment variables.
@@ -85,6 +90,7 @@ setup_common_test_env() {
   unset "${PKG_REQS[@]}"
   export GIT_BRANCH="main"
   export ENVIRONMENT="staging"
+  export IDENTITY_PROVIDER="ldap"
 
   # Set up environment variables for testing
   export SYNC_CONFIG_SOURCE="${test_root}/ldap-sync-config.yaml"
@@ -131,7 +137,8 @@ setup_commit_and_push_env() {
   export_tools git
   export CASE=single
   use_stub oc
-  export TARGET_DIR="${WORKDIR}/components/k8s-groups/${ENVIRONMENT}/rover/groups/"
+  TARGET_DIR="$(groups_dir_for_env)/"
+  export TARGET_DIR
 }
 
 # Sets up environment variables for the create group manifests tests.
@@ -140,7 +147,8 @@ setup_create_group_manifests_env() {
   export_tools yq find kustomize sed
   export CASE=single
   use_stub oc
-  export TARGET_DIR="${WORKDIR}/components/k8s-groups/${ENVIRONMENT}/rover/groups/"
+  TARGET_DIR="$(groups_dir_for_env)/"
+  export TARGET_DIR
   mkdir -p "${TARGET_DIR}"
 }
 
@@ -152,6 +160,13 @@ setup_inject_ldap_credentials_env() {
 
 # Sets up environment variables for the retrieve groups tests.
 setup_retrieve_groups_env() {
+  require_tools yq mktemp
+  export_tools yq mktemp
+  use_stub oc single case
+}
+
+# Sets up environment variables for the apply username prefix tests.
+setup_apply_username_prefix_env() {
   require_tools yq mktemp
   export_tools yq mktemp
   use_stub oc single case

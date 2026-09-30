@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Delegates to real find(1) except the sync cleanup of *.yaml under
-# components/k8s-groups/<ENVIRONMENT>/rover/groups/.
+# components/k8s-groups/<ENVIRONMENT>/rover/[<IDENTITY_PROVIDER>/]groups/.
 REAL_FIND="$(command -v find)"
 [[ -n "${REAL_FIND}" ]] || { echo "stub find: real find not on PATH" >&2; exit 99; }
 
@@ -8,10 +8,10 @@ target="${1:-}"
 # Strip trailing slash so basename is stable.
 normalized="${target%/}"
 # Script runs: find "${TARGET_DIR}" -maxdepth 1 -type f -name '*.yaml' -delete
-# TARGET_DIR is .../components/k8s-groups/<staging|production>/rover/groups
+# TARGET_DIR is .../components/k8s-groups/<staging|production>/rover/[<idp>/]groups
 if [[ "$(basename -- "${normalized}")" == "groups" ]] &&
   [[ "${normalized}" == *"/components/k8s-groups/"* ]] &&
-  [[ "${normalized}" == *"/rover/groups" ]] &&
+  [[ "${normalized}" == *"/rover/"*"groups" ]] &&
   [[ "$*" == *"-name"* ]] &&
   [[ "$*" == *"-delete"* ]]; then
   echo "find: simulated failure deleting existing group yaml files" >&2

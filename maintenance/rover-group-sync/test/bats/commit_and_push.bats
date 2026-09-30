@@ -18,9 +18,9 @@ setup() {
   assert_log_info "Changes committed and pushed to Git repository."
   [[ "${output}" != *"No group manifest changes"* ]]
 
-  [[ -f "${WORKDIR}/components/k8s-groups/staging/rover/groups/test-group.yaml" ]]
+  [[ -f "$(groups_dir_for_env)/test-group.yaml" ]]
   run git -C "${bare_repo}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups"* ]]
 }
 
 @test "exits 0 without commit when manifests are unchanged" {

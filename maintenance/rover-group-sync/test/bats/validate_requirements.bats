@@ -104,6 +104,22 @@ setup() {
   assert_log_error "LDAP_PASSWORD must be set to a non-empty string"
 }
 
+@test "passes when IDENTITY_PROVIDER is empty" {
+  export IDENTITY_PROVIDER=""
+
+  run validate_requirements
+  [[ "${status}" -eq 0 ]]
+  assert_log_info "Environment variables validated."
+}
+
+@test "passes when IDENTITY_PROVIDER is unset" {
+  unset IDENTITY_PROVIDER
+
+  run validate_requirements
+  [[ "${status}" -eq 0 ]]
+  assert_log_info "Environment variables validated."
+}
+
 @test "fails when ENVIRONMENT is neither 'production' nor 'staging'" {
   export ENVIRONMENT="not-an-environment"
 

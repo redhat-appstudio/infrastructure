@@ -9,6 +9,50 @@ setup() {
   export GIT_SSH_COMMAND="true"
 }
 
+@test "syncs groups into rover/<IDENTITY_PROVIDER>/groups directory" {
+  export CASE=single
+  export IDENTITY_PROVIDER="oidc"
+  prepare_main_remote
+
+  run_main
+  [[ "${status}" -eq 0 ]]
+
+  groups_dir="$(groups_dir_for_env)"
+  [[ -f "${groups_dir}/test-group.yaml" ]]
+  [[ "${groups_dir}" == *"/rover/oidc/groups" ]]
+}
+
+@test "syncs groups into legacy rover/groups directory when IDENTITY_PROVIDER is unset" {
+  unset IDENTITY_PROVIDER
+  export CASE=single
+  prepare_main_remote
+
+  run_main
+  [[ "${status}" -eq 0 ]]
+
+  groups_dir="$(groups_dir_for_env)"
+  [[ -f "${groups_dir}/test-group.yaml" ]]
+  [[ "$(basename "$(dirname "${groups_dir}")")" == "rover" ]]
+  [[ "${groups_dir}" == *"/rover/groups" ]]
+
+  run git -C "${BARE_REMOTE_PATH}" log --oneline -1
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" != *"chore(groups): sync $ENVIRONMENT rover  LDAP groups"* ]]
+}
+
+@test "syncs groups with prefixed usernames when USERNAME_PREFIX is set" {
+  export CASE=single
+  export USERNAME_PREFIX="ldap:"
+  prepare_main_remote
+
+  run_main
+  [[ "${status}" -eq 0 ]]
+
+  groups_dir="$(groups_dir_for_env)"
+  run yq '.users[0]' "${groups_dir}/test-group.yaml"
+  [[ "${output}" == "ldap:user1" ]]
+}
+
 @test "syncs groups, writes manifests, commits and pushes with one group" {
   export CASE=single
   prepare_main_remote
@@ -24,7 +68,7 @@ setup() {
   assert_kustomization "${groups_dir}" '["test-group.yaml"]'
 
   run git -C "${BARE_REMOTE_PATH}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups"* ]]
 }
 
 @test "filters group metadata to stable openshift.io/ldap labels and annotations" {
@@ -97,9 +141,9 @@ setup() {
   run git -C "${WORKDIR}" branch --show-current
   [[ "${output}" == "my-branch" ]]
   run git -C "${WORKDIR}" log -1 --format=%s
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups my-branch"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups my-branch"* ]]
   run git -C "${BARE_REMOTE_PATH}" log --oneline -1 my-branch
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups"* ]]
 }
 
 @test "syncs groups, writes manifests, commits and pushes when ENVIRONMENT is set" {
@@ -113,7 +157,7 @@ setup() {
   groups_dir="$(groups_dir_for_env)"
   [[ -f "${groups_dir}/test-group.yaml" ]]
   run git -C "${BARE_REMOTE_PATH}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups"* ]]
 }
 
 @test "syncs groups, sanitizes metadata.name into a safe filename (sed), writes manifests, commits and pushes with one group" {
@@ -147,7 +191,7 @@ setup() {
   assert_kustomization "${groups_dir}"
 
   run git -C "${BARE_REMOTE_PATH}" log --oneline -1
-  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover LDAP groups"* ]]
+  [[ "${output}" == *"chore(groups): sync $ENVIRONMENT rover $IDENTITY_PROVIDER LDAP groups"* ]]
 }
 
 @test "exits 0 without commit when manifests are unchanged" {
