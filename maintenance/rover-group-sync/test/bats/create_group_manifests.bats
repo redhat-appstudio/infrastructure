@@ -57,7 +57,8 @@ setup() {
   [[ "${status}" -eq 1 ]]
   assert_log_error "Failed to count groups in TEMP_GROUP_LIST"
   [[ "${output}" == *"Error:"* ]]
-  [[ "${output}" == *"yaml:"* ]]
+  # yq <=4.53 prefixes parser errors with "yaml:"; yq >=4.54 reports "go-yaml".
+  [[ "${output}" == *"yaml:"* || "${output}" == *"go-yaml"* ]]
 }
 
 @test "fails when yq cannot read .items[i].metadata.name" {
