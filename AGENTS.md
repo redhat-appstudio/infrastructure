@@ -51,3 +51,5 @@ rover-group-sync (located at `maintenance/rover-group-sync/`):
 - `sync-rover-groups.sh` - business logic
 - `Dockerfile` - image building
 - `test/` - unit tests
+
+trigger required checks
