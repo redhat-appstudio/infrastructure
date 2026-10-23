@@ -1,5 +1,5 @@
 # First stage: Build etcdctl
-FROM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:8c5aeac74b4b60dc2e5e44f6b639186b7ec2fec8f0eb9a36d4a32dcf8e255f52 AS builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.26.10-1792671270@sha256:edb9452603fa48e9882063f001ecd7d322add20f1564a4f05f38f6683be5ea94 AS builder
 
 WORKDIR /opt/app-root/src
 
