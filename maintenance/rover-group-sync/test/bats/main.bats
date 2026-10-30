@@ -53,6 +53,20 @@ setup() {
   [[ "${output}" == "ldap:user1" ]]
 }
 
+@test "syncs only allowlisted groups when GROUPS_ALLOWLIST is set" {
+  export CASE=multi
+  export GROUPS_ALLOWLIST="rover-bravo"
+  prepare_main_remote
+
+  run_main
+  [[ "${status}" -eq 0 ]]
+
+  groups_dir="$(groups_dir_for_env)"
+  [[ -f "${groups_dir}/rover-bravo.yaml" ]]
+  [[ ! -f "${groups_dir}/rover-alpha.yaml" ]]
+  assert_kustomization "${groups_dir}" '["rover-bravo.yaml"]'
+}
+
 @test "syncs groups, writes manifests, commits and pushes with one group" {
   export CASE=single
   prepare_main_remote

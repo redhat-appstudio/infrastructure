@@ -2,7 +2,7 @@
 # Sourced by sync-rover-groups test files.
 
 PKG_REQS=(OC YQ GIT SED KUSTOMIZE FIND MKTEMP)
-PER_TEST_VARS=(GIT_REPO_URL TARGET_DIR GIT_BRANCH REASON CASE GIT_SSH_COMMAND BARE_REMOTE_PATH USERNAME_PREFIX IDENTITY_PROVIDER)
+PER_TEST_VARS=(GIT_REPO_URL TARGET_DIR GIT_BRANCH REASON CASE GIT_SSH_COMMAND BARE_REMOTE_PATH USERNAME_PREFIX IDENTITY_PROVIDER GROUPS_ALLOWLIST)
 # ------------------------------------- Helper Functions -------------------------------------
 # Skips the test unless all named tools are on PATH. Takes tool names as arguments.
 require_tools() {
@@ -167,6 +167,13 @@ setup_retrieve_groups_env() {
 
 # Sets up environment variables for the apply username prefix tests.
 setup_apply_username_prefix_env() {
+  require_tools yq mktemp
+  export_tools yq mktemp
+  use_stub oc single case
+}
+
+# Sets up environment variables for the filter groups allowlist tests.
+setup_filter_groups_allowlist_env() {
   require_tools yq mktemp
   export_tools yq mktemp
   use_stub oc single case
