@@ -24,6 +24,8 @@ GIT_BRANCH="${GIT_BRANCH:-main}"
 ENVIRONMENT="${ENVIRONMENT:-staging}"
 IDENTITY_PROVIDER="${IDENTITY_PROVIDER:-}"
 USERNAME_PREFIX="${USERNAME_PREFIX:-}"
+# Comma-separated group names to keep; empty means no filtering (sync all).
+GROUPS_ALLOWLIST="${GROUPS_ALLOWLIST:-}"
 
 # Temp paths (set as created; cleanup removes whatever exists on any exit).
 WRITEABLE_SYNC_CFG=""
@@ -194,6 +196,35 @@ retrieve_groups() {
     log_info "Groups retrieved from LDAP."
 }
 
+# Filters TEMP_GROUP_LIST to groups named in GROUPS_ALLOWLIST (comma-separated).
+# When unset or empty, all groups are kept. Surrounding whitespace around names is ignored.
+filter_groups_allowlist() {
+    if [[ -z "${GROUPS_ALLOWLIST}" ]]; then
+        return 0
+    fi
+
+    log_info "Filtering groups using GROUPS_ALLOWLIST..."
+    local filtered
+    filtered="$("${MKTEMP}")" || {
+        log_error "Failed to create temporary filtered group list file"
+        return 1
+    }
+
+    export GROUPS_ALLOWLIST
+    # yq owns $allow / $n; bash must not expand them.
+    # shellcheck disable=SC2016
+    if ! "${YQ}" '(strenv(GROUPS_ALLOWLIST) | split(",") | map(trim)) as $allow |
+        .items |= map(select(.metadata.name as $n | ($allow | contains([$n]))))' \
+        "${TEMP_GROUP_LIST}" >"${filtered}"; then
+        log_error "Failed to filter groups by allowlist (yq)"
+        rm -f "${filtered}"
+        return 1
+    fi
+
+    mv "${filtered}" "${TEMP_GROUP_LIST}"
+    log_info "Groups filtered by allowlist."
+}
+
 # Prefixes each username in TEMP_GROUP_LIST when USERNAME_PREFIX is non-empty.
 apply_username_prefix() {
     if [[ -z "${USERNAME_PREFIX}" ]]; then
@@ -314,6 +345,7 @@ main() {
     inject_ldap_credentials
     clone_git_repo
     retrieve_groups
+    filter_groups_allowlist
     apply_username_prefix
     create_group_manifests
     commit_and_push

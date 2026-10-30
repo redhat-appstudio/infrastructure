@@ -12,6 +12,7 @@ Bash script intended to run in a Kubernetes CronJob (see `Dockerfile`) It:
 
 Typical inputs are mounted files (`SYNC_CONFIG_SOURCE`, `LDAP_CA_PATH`, `GIT_PRIVATE_SSH_PATH`) and secrets (`GIT_REPO_URL`, `LDAP_DN`, `LDAP_PASSWORD`).
 `IDENTITY_PROVIDER` is optional; when set, it names the identity-provider segment in the output path (for example `internal-rh-sso` or `ibm`). When omitted, manifests go under the legacy `rover/groups` path.
+`GROUPS_ALLOWLIST` is optional; when set to a comma-separated list of group names (for example `rover-alpha,rover-bravo`), only those groups are written. Surrounding whitespace around each name is ignored. When unset or empty, all synced groups are written.
 For Git over SSH, the script sets **`StrictHostKeyChecking=accept-new`** and uses a **temporary `known_hosts`** file. Do not disable host key verification in production.
 
 The script supports overriding command paths (`OC`, `YQ`, `GIT` etc.) and `GIT_SSH_COMMAND` for testing or nonstandard installs.
